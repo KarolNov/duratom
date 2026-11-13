@@ -1,0 +1,37 @@
+{
+  "name": "duratom",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Durable, live Jotai atoms over a Y.Doc: typed reads, validated writes, re-renders only on change.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "oxfmt": "^0.71.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.3",
+    "yjs": "^13.6.33"
+  },
+  "peerDependencies": {
+    "yjs": "^13.6.33"
+  },
+  "packageManager": "pnpm@9.12.3"
+}
