@@ -10,6 +10,12 @@ import { validate } from './validate.js'
  * schema's own result. An absent node returns `undefined` without validating, and a node with a
  * shape mismatch, or a shared type that isn't a `Y.Map`, returns the layer's own issues without
  * validating.
+ *
+ * @example
+ * const Todo = z.object({ title: z.string(), done: z.boolean() })
+ * const result = read(Todo, { title: 'text' }, doc.getMap('todos').get(id) as Y.Map<unknown>)
+ * if (result?.issues) console.warn(result.issues)
+ * else if (result) console.log(result.value.title)
  */
 export function read<Schema extends StandardSchemaV1, const S extends object>(
   schema: Schema,
@@ -44,7 +50,15 @@ export interface Reader<T> {
   ) => boolean
 }
 
-/** `read(schema, shape, node)` as a `Reader`, for `select...project(reader(schema, shape))`. */
+/**
+ * `read(schema, shape, node)` as a `Reader`, for `select...project(reader(schema, shape))`.
+ * `typedAtom` reads through it; use it for a read-only typed value outside Jotai.
+ *
+ * @example
+ * const Todo = z.object({ title: z.string(), done: z.boolean() })
+ * const todo = live(doc, select.map('todos').child(id).project(reader(Todo, { title: 'text' })))
+ * todo.subscribe((result) => console.log(result?.issues ?? result?.value))
+ */
 export function reader<Schema extends StandardSchemaV1, const S extends object>(
   schema: Schema,
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,

@@ -12,6 +12,10 @@ type Step = { root: string; kind: 'map' | 'array' } | { key: string }
  * in each parent map: that is how a node that does not exist yet (a card that
  * another tab has not created) or that gets deleted is noticed without
  * observing the whole doc.
+ *
+ * @example
+ * const card = at.map('cards').child<Y.Map<unknown>>('card-1')
+ * card.resolve(doc) // the Y.Map, or undefined while it's missing
  */
 export class Locator<N extends Y.AbstractType<any> = Y.AbstractType<any>> {
   constructor(readonly steps: readonly Step[]) {}
@@ -36,8 +40,19 @@ export class Locator<N extends Y.AbstractType<any> = Y.AbstractType<any>> {
   }
 }
 
+/**
+ * Starts a `Locator` at a root type of the doc. `select` builds on it, and is what most code
+ * uses; `at` is for a `LiveSpec` written by hand.
+ *
+ * @example
+ * const spec = {
+ *   locate: () => at.map('cards').child<Y.Map<unknown>>('card-1'),
+ *   project: (card: Y.Map<unknown> | undefined) => card?.size ?? 0,
+ * }
+ */
 export const at = {
   map: <V = unknown>(name: string) => new Locator<Y.Map<V>>([{ root: name, kind: 'map' }]),
   array: <V = unknown>(name: string) => new Locator<Y.Array<V>>([{ root: name, kind: 'array' }]),
 }
+/** The type of `at`, which a `LiveSpec`'s `locate` gets. */
 export type At = typeof at

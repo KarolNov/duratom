@@ -1,0 +1,14 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  // The docs site: the built VitePress site, served as Workers static assets with no Worker code.
+  "name": "duratom-docs",
+  "compatibility_date": "2026-10-28",
+  "assets": {
+    "directory": "../docs/.vitepress/dist",
+    // `/api` serves `api.html`, and `/api.html` redirects to `/api`, matching the site's clean URLs.
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+  "routes": [{ "pattern": "duratom.karolnov.dev", "custom_domain": true }],
+  "workers_dev": true,
+}
