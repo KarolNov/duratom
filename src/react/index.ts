@@ -1,7 +1,11 @@
-import { useAtomValue } from 'jotai'
+import type { StandardSchemaV1 } from '@standard-schema/spec'
+import { useAtom, useAtomValue } from 'jotai'
 import { useMemo, type DependencyList } from 'react'
 import type * as Y from 'yjs'
 import { liveAtom, type AtomOptions, type LiveSpec } from '../atoms/live-atom.js'
+import { typedAtom, type Patch } from '../atoms/typed-atom.js'
+import type { Locator, MapPath } from '../core/index.js'
+import type { Exact } from '../schema/shape.js'
 
 type SpecOptions<N extends Y.AbstractType<any>, T> = Omit<LiveSpec<N, T>, 'locate' | 'project'> &
   AtomOptions
@@ -70,4 +74,38 @@ export function useLiveAtom<N extends Y.AbstractType<any>, T>(
     [...deps, docAtom],
   )
   return useAtomValue(a)
+}
+
+/**
+ * Hook form of `typedAtom`, returning `[result, set]` as `useAtom` does: `result` is `undefined`
+ * while the node is missing, `{ issues }` while it's invalid and `{ value }` otherwise, and
+ * `set(patch)` merges a patch and returns the schema's result. `locator` can be a function that
+ * builds it, so it's built only when `deps` change. The atom is rebuilt only when `deps` change,
+ * so list whatever the locator closes over (an id, say), as with useMemo; `schema` and `shape`
+ * are taken from the render that built it. `options.docAtom` reads another doc than `docAtom`.
+ *
+ * @example
+ * const [card, setCard] = useTypedAtom(() => select.map('cards').child(id), Card, { title: 'text' }, [id])
+ * if (card?.value) setCard({ priority: 'high' })
+ */
+export function useTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any> | (() => Locator<any> | MapPath<any>),
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  deps: DependencyList,
+  options?: AtomOptions,
+): [
+  result: StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>> | undefined,
+  set: (
+    patch: Patch<StandardSchemaV1.InferOutput<Schema>>,
+  ) => StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>>,
+] {
+  const docAtom = options?.docAtom
+  const a = useMemo(
+    () =>
+      typedAtom(typeof locator === 'function' ? locator() : locator, schema, shape, { docAtom }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...deps, docAtom],
+  )
+  return useAtom(a)
 }
