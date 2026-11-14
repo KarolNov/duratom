@@ -1,0 +1,121 @@
+{
+  "docs": {
+    "backend": "notion",
+    "location": {
+      "root": "https://app.notion.com/p/41743cce21f281cba640e179c9c5c5f7",
+      "specs": "collection://29c3a8ad-d4ef-4e42-92d5-3727352a4144",
+      "blueprints": "collection://7637e606-1c82-4119-8899-d3b7efc7e61d"
+    }
+  },
+  "tickets": {
+    "tracker": "notion",
+    "location": {
+      "tasks": "collection://befa59ee-a1b6-4aed-93ff-35e47624a7bc"
+    }
+  },
+  "project": "https://app.notion.com/p/40a43cce21f281a883b8cb76b5aa87fd",
+  "specs": {
+    "core/observe": {
+      "ref": "https://app.notion.com/p/41843cce21f28159aa9ce272ea3fc338",
+      "anchors": [
+        "src/core/**",
+        "!**/__tests__/**"
+      ],
+      "specVersion": "b07899dc79d2a07d",
+      "anchorsFiles": {
+        "src/core/equality.ts": "8a43c0aeae04",
+        "src/core/index.ts": "b669372fb326",
+        "src/core/live.ts": "354915c4f075",
+        "src/core/locator.ts": "b5df09cbf416",
+        "src/core/observe.ts": "43013570dcce",
+        "src/core/select.ts": "d5d035fbb8dd"
+      },
+      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+    },
+    "schema": {
+      "ref": "https://app.notion.com/p/41843cce21f28196b716c0414a2fa0fd",
+      "anchors": [
+        "src/schema/**",
+        "!**/__tests__/**"
+      ],
+      "specVersion": "b8bdd57705e099b0",
+      "anchorsFiles": {
+        "src/schema/copy.ts": "be6ca4fa3cc6",
+        "src/schema/equal.ts": "b01d8610e9f6",
+        "src/schema/errors.ts": "857bf524fdd6",
+        "src/schema/index.ts": "06637d2a5469",
+        "src/schema/read.ts": "26db28256b63",
+        "src/schema/shape.ts": "db68dff51b06",
+        "src/schema/validate.ts": "9ce461fd446f",
+        "src/schema/write.ts": "eeecd8b89fcf"
+      },
+      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+    },
+    "atoms": {
+      "ref": "https://app.notion.com/p/41843cce21f281e8abb3d723e3ccff98",
+      "anchors": [
+        "src/atoms/**",
+        "src/react/**",
+        "src/index.ts",
+        "!**/__tests__/**"
+      ],
+      "specVersion": "5288aa7742cd1ffa",
+      "anchorsFiles": {
+        "src/atoms/collection.ts": "4773d1994601",
+        "src/atoms/index.ts": "05b211410fab",
+        "src/atoms/live-atom.ts": "0e984138d782",
+        "src/atoms/typed-atom.ts": "a95f74cad7d0",
+        "src/index.ts": "70c2a3076d34",
+        "src/react/index.ts": "d40fe59c750d"
+      },
+      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+    },
+    "docs": {
+      "ref": "https://app.notion.com/p/41843cce21f281ddadd7c87c279f801b",
+      "anchors": [
+        "README.md",
+        "llms.txt",
+        "llms-full.txt",
+        "skills/**",
+        "docs/**",
+        "scripts/docs.ts",
+        "!docs/.vitepress/**"
+      ],
+      "specVersion": "05787bdf9199657c",
+      "anchorsFiles": {
+        "README.md": "57d6f510339c",
+        "docs/api.md": "1772f0137cd4",
+        "docs/recipes/offline.md": "a8a313860c20",
+        "docs/recipes/repair.md": "3ca901f01fc3",
+        "docs/recipes/sync.md": "3e6336734f5c",
+        "docs/snippets/collection.tsx": "a4c3e077769e",
+        "docs/snippets/core.ts": "87bcf4f267d5",
+        "docs/snippets/live-atom.tsx": "2e81d3185c5c",
+        "docs/snippets/offline.ts": "a891d0916b3d",
+        "docs/snippets/quick-start.tsx": "a55fa36ed5f6",
+        "docs/snippets/repair.ts": "75e321bed300",
+        "docs/snippets/server/sync-server.ts": "d64647836d06",
+        "docs/snippets/server/tsconfig.json": "ad0767d005dc",
+        "docs/snippets/several-docs.ts": "12c3dbd53385",
+        "docs/snippets/sync-client.ts": "d794dfc12267",
+        "docs/snippets/typed-hook.tsx": "0cce514900ff",
+        "docs/tsconfig.json": "746844c7e1c2",
+        "llms-full.txt": "53516c37cf1f",
+        "llms.txt": "3f7862e9eb72",
+        "scripts/docs.ts": "bd8f22bc0dce",
+        "skills/duratom/SKILL.md": "41e400eba4c7"
+      },
+      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+    }
+  },
+  "changes": {
+    "extract-duratom-from-y-modern": {
+      "brief": "https://app.notion.com/p/41743cce21f281b6b255e787aac2d939",
+      "review": "https://app.notion.com/p/41743cce21f281d296e9deceb6142132",
+      "tickets": "https://app.notion.com/p/09358132c9354de18d598940183fb439",
+      "status": "applied",
+      "baseRepo": "KarolNov/y-modern",
+      "branch": "kn/extract-duratom-y-modern-008720"
+    }
+  }
+}
