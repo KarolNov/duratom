@@ -1,7 +1,7 @@
 import { docAtom } from 'duratom'
 import { useLiveAtom } from 'duratom/react'
 import { createStore, Provider, useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { memo, useMemo, useState, type FormEvent } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import * as Y from 'yjs'
 import { link } from './link'
 import { scanOnAtom, setScan } from './scan'
@@ -28,6 +28,8 @@ function person(name: string) {
 const alice = person('Alice')
 const bob = person('Bob')
 const wire = link(alice.doc, bob.doc)
+// Editing this module in dev builds a new pair of docs; unhook the old pair's link.
+import.meta.hot?.dispose(() => wire.destroy())
 
 alice.store.set(
   todos.create,
@@ -321,12 +323,19 @@ const TodoRow = memo(function TodoRow({ id }: { id: string }) {
   const status = useAtomValue(useMemo(() => statusOf(id), [id]))
   const remove = useSetAtom(todos.remove)
   const repair = useSetAtom(repairTodo)
+  const [repairError, setRepairError] = useState<string>()
 
-  if (status === undefined) return null
+  // Rows mount per pane, and the panes share the family, so a pane that still shows the todo just
+  // gets a fresh atom on its next render. Without this, every removed todo's atom stays forever.
+  useEffect(() => () => todos.item.remove(id), [id])
+
   if (status !== null) {
     return (
       <li className="broken">
-        <span className="issue">Unreadable todo: {status}</span>
+        <span className="issue">
+          Unreadable todo: {status}
+          {repairError && <> (repair failed: {repairError})</>}
+        </span>
         <Tip
           align="end"
           text={
@@ -339,7 +348,12 @@ const TodoRow = memo(function TodoRow({ id }: { id: string }) {
           {(describedBy) => (
             <button
               className="icon"
-              onClick={() => repair(id)}
+              onClick={() => {
+                const result = repair(id)
+                setRepairError(
+                  result.issues ? (result.issues[0]?.message ?? 'Invalid todo') : undefined,
+                )
+              }}
               aria-label="Repair"
               aria-describedby={describedBy}
             >
@@ -385,34 +399,70 @@ function DoneToggle({ id }: { id: string }) {
 function TodoTitle({ id }: { id: string }) {
   const title = useLiveAtom(() => titleOf(id), [id])
   const setTodo = useSetAtom(todos.item(id))
-  // What the input shows while it holds a title the schema rejects; the doc keeps the last valid one.
-  const [draft, setDraft] = useState<{ title: string; error?: string }>()
+  // Why the input's text was rejected, while it holds one; the doc keeps the last valid title.
+  const [error, setError] = useState<string>()
+  const input = useRef<HTMLInputElement>(null)
+
+  // The input is uncontrolled so a peer's edit can keep the caret where it was: a controlled input
+  // given a new value moves its caret to the end. Its text is left alone while it holds a rejected
+  // one, and catches up once that's fixed or the input loses focus.
+  useLayoutEffect(() => {
+    if (input.current && error === undefined) replaceKeepingSelection(input.current, title)
+  }, [title, error])
 
   const rename = (next: string) => {
     // A patch: only the title changes, so a peer ticking this todo at the same time isn't undone.
     const result = setTodo({ title: next })
-    setDraft(result.issues ? { title: next, error: result.issues[0]?.message } : undefined)
+    setError(result.issues ? (result.issues[0]?.message ?? 'Invalid title') : undefined)
   }
 
   return (
     <Tip
       grow
-      open={draft !== undefined}
+      open={error !== undefined}
       tone="danger"
       align="center"
-      text={`${draft?.error ?? ''}. The doc keeps the last valid title.`}
+      text={`${error ?? ''}. The doc keeps the last valid title.`}
     >
       {(describedBy) => (
         <input
-          className={draft ? 'title invalid' : 'title'}
-          value={draft?.title ?? title}
+          ref={input}
+          className={error === undefined ? 'title' : 'title invalid'}
+          defaultValue={title}
           onChange={(e) => rename(e.target.value)}
-          onBlur={() => setDraft(undefined)}
+          onBlur={() => setError(undefined)}
           aria-label="Title"
-          aria-invalid={draft ? true : undefined}
-          aria-describedby={draft ? describedBy : undefined}
+          aria-invalid={error === undefined ? undefined : true}
+          aria-describedby={error === undefined ? undefined : describedBy}
         />
       )}
     </Tip>
   )
+}
+
+/**
+ * Sets an input's text to `next`, moving its selection with the text around it: a position before
+ * the changed span stays, one after it shifts by the change's length, and one inside it lands at the
+ * end of the new text.
+ */
+function replaceKeepingSelection(el: HTMLInputElement, next: string) {
+  const prev = el.value
+  if (prev === next) return
+  const end = Math.min(prev.length, next.length)
+  let prefix = 0
+  while (prefix < end && prev[prefix] === next[prefix]) prefix++
+  let suffix = 0
+  while (suffix < end - prefix && prev[prev.length - 1 - suffix] === next[next.length - 1 - suffix])
+    suffix++
+  const focused = el === document.activeElement
+  const { selectionStart, selectionEnd, selectionDirection } = el
+  el.value = next
+  if (!focused || selectionStart === null || selectionEnd === null) return
+  const move = (at: number) =>
+    at <= prefix
+      ? at
+      : at >= prev.length - suffix
+        ? at + next.length - prev.length
+        : next.length - suffix
+  el.setSelectionRange(move(selectionStart), move(selectionEnd), selectionDirection ?? undefined)
 }

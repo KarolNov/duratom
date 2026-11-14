@@ -5,6 +5,11 @@ import { atom } from 'jotai'
 // turning it off is live.
 const KEY = 'duratom-todo:react-scan'
 
+// `?scan` turns it on. Stored here, as the module loads, so `scanOnAtom` below starts from it too.
+try {
+  if (new URLSearchParams(location.search).has('scan')) localStorage.setItem(KEY, '1')
+} catch {}
+
 const read = () => {
   try {
     return localStorage.getItem(KEY) === '1'
@@ -18,9 +23,6 @@ const load = () => (loaded ??= import('react-scan'))
 
 /** Loads react-scan before the first render when it was left on, or when the URL has `?scan`. */
 export async function initScan() {
-  try {
-    if (new URLSearchParams(location.search).has('scan')) localStorage.setItem(KEY, '1')
-  } catch {}
   if (!read()) return
   const { scan } = await load()
   scan({ enabled: true, showToolbar: true, dangerouslyForceRunInProduction: true })

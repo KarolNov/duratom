@@ -3,9 +3,15 @@ import { atom } from 'jotai'
 import * as Y from 'yjs'
 import { z } from 'zod'
 
+const MAX_TITLE = 80
+
 /** One todo. `title` is collaborative text, so two people typing in it both keep their edits. */
 export const Todo = z.object({
-  title: z.string().min(1, 'A todo needs a title').max(80, 'Keep the title under 80 characters'),
+  title: z
+    .string()
+    // A check rather than `.trim()`, which would strip the space typed between two words.
+    .refine((title) => title.trim() !== '', 'A todo needs a title')
+    .max(MAX_TITLE, `Keep the title to ${MAX_TITLE} characters or fewer`),
   done: z.boolean(),
 })
 export type Todo = z.output<typeof Todo>
@@ -37,14 +43,16 @@ export const titleOf = (id: string) => todo(id).text('title')
 export const doneOf = (id: string) => todo(id).get('done', false)
 
 /**
- * Whether a todo can be shown: `undefined` while it is missing, its first issue while the schema
- * rejects it, and `null` otherwise. Derived from the item's typed atom, and Jotai notifies only
+ * Whether a todo can be shown: `null` when it can, and otherwise why not, either the schema's first
+ * issue or that the entry isn't a todo at all (a plain value a peer stored, which the item's typed
+ * atom reads as `undefined`). Rows exist only for listed ids, so a missing entry is one listed but
+ * not a map. Derived from the item's typed atom, and Jotai notifies only
  * when this changes, so a row reading it doesn't re-render while a field is edited.
  */
 export const statusOf = (id: string) =>
   atom((get) => {
     const result = get(todos.item(id))
-    if (!result) return undefined
+    if (!result) return 'Not a todo'
     return result.issues ? (result.issues[0]?.message ?? 'Invalid todo') : null
   })
 
@@ -68,12 +76,14 @@ export const addInvalidTodo = atom(null, (get, _set, title: string) => {
 /**
  * Repairs a todo the schema rejects. While a todo has no valid value, its typed atom's setter
  * takes a whole value and replaces what the schema rejected; this keeps the stored title when
- * there is one. Repair is app code because only the app knows what a sensible value is.
+ * there is one, cut to the length the schema allows. Repair is app code because only the app knows what a sensible value is.
  */
 export const repairTodo = atom(null, (get, set, id: string) => {
   const item = get(docAtom)?.getMap<unknown>('todos').get(id)
   const title = item instanceof Y.Map ? String(item.get('title') ?? '').trim() : ''
-  return set(todos.item(id), { title: title || 'Repaired todo', done: false })
+  // A buggy peer's title can be longer than the schema allows; keeping it whole would fail the repair.
+  const kept = title.slice(0, MAX_TITLE).trim()
+  return set(todos.item(id), { title: kept || 'Repaired todo', done: false })
 })
 
 /** An id that sorts by creation time, since a collection lists its ids sorted. */
