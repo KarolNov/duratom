@@ -1,3 +1,5 @@
+import { atom } from 'jotai'
+
 // react-scan only sees renders from the moment it loads, and React hooks into it at startup, so it
 // is loaded before the first render when enabled. Turning it on later therefore reloads the page;
 // turning it off is live.
@@ -24,7 +26,11 @@ export async function initScan() {
   scan({ enabled: true, showToolbar: true, dangerouslyForceRunInProduction: true })
 }
 
-export const scanEnabled = read
+/**
+ * Whether react-scan is on, for the toggle and for the parts of the page shown only with it. In
+ * Jotai's default store, since the app's controls sit outside the panes' own stores.
+ */
+export const scanOnAtom = atom(read())
 
 export async function setScan(on: boolean) {
   try {

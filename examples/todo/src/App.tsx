@@ -1,10 +1,10 @@
 import { docAtom } from 'duratom'
 import { useLiveAtom } from 'duratom/react'
-import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
+import { createStore, Provider, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { memo, useMemo, useState, type FormEvent } from 'react'
 import * as Y from 'yjs'
 import { link } from './link'
-import { scanEnabled, setScan } from './scan'
+import { scanOnAtom, setScan } from './scan'
 import { doneOf, newId, progress, statusOf, titleOf, todos } from './todos'
 
 /** One person: a doc of their own, and a Jotai store whose `docAtom` holds it. */
@@ -57,16 +57,20 @@ export function App() {
   )
 }
 
-/** What each component reads, and so when it re-renders. Static, so it renders once. */
+/**
+ * What each component reads, and so when it re-renders. Shown only while react-scan is on, next to
+ * the outlines it explains.
+ */
 function HowItWorks() {
+  if (!useAtomValue(scanOnAtom)) return null
   return (
     <section className="how">
       <h2>What re-renders, and why</h2>
       <p>
         duratom atoms notify only when the value they show changes. A Y.Doc edit that leaves an
         atom's value equal reaches no component. So each component here subscribes to the smallest
-        atom that holds what it shows, and an edit re-renders only the components showing it. Tick{' '}
-        <em>Show re-renders</em> to see it: typing in a title outlines that title and nothing else.
+        atom that holds what it shows, and an edit re-renders only the components showing it. The
+        outlines show it: typing in a title outlines that title and nothing else.
       </p>
       <div className="table">
         <table>
@@ -141,7 +145,7 @@ function Controls() {
     wire.setLatency(seconds * 1000)
     setLatency(seconds)
   }
-  const [scan, setScanOn] = useState(scanEnabled)
+  const [scan, setScanOn] = useAtom(scanOnAtom)
 
   return (
     <>
