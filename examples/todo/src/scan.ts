@@ -1,0 +1,39 @@
+// react-scan only sees renders from the moment it loads, and React hooks into it at startup, so it
+// is loaded before the first render when enabled. Turning it on later therefore reloads the page;
+// turning it off is live.
+const KEY = 'duratom-todo:react-scan'
+
+const read = () => {
+  try {
+    return localStorage.getItem(KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+let loaded: Promise<typeof import('react-scan')> | undefined
+const load = () => (loaded ??= import('react-scan'))
+
+/** Loads react-scan before the first render when it was left on, or when the URL has `?scan`. */
+export async function initScan() {
+  try {
+    if (new URLSearchParams(location.search).has('scan')) localStorage.setItem(KEY, '1')
+  } catch {}
+  if (!read()) return
+  const { scan } = await load()
+  scan({ enabled: true, showToolbar: true, dangerouslyForceRunInProduction: true })
+}
+
+export const scanEnabled = read
+
+export async function setScan(on: boolean) {
+  try {
+    localStorage.setItem(KEY, on ? '1' : '0')
+  } catch {}
+  if (loaded) {
+    const { setOptions } = await loaded
+    setOptions({ enabled: on, showToolbar: on })
+  } else if (on) {
+    location.reload()
+  }
+}

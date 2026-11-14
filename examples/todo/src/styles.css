@@ -72,7 +72,8 @@ header p {
   margin: 0;
 }
 
-.latency {
+.latency,
+.scan {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -169,7 +170,8 @@ li .title:focus {
   border-color: var(--border);
 }
 
-li.done .title {
+/* The checkbox, not the row, knows whether the todo is done, so the row never re-renders for it. */
+li:has(input[type='checkbox']:checked) .title {
   text-decoration: line-through;
   color: var(--muted);
 }

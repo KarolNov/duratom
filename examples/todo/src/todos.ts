@@ -1,4 +1,5 @@
 import { collection, select } from 'duratom'
+import { atom } from 'jotai'
 import * as Y from 'yjs'
 import { z } from 'zod'
 
@@ -25,6 +26,27 @@ export const progress = select.map('todos').project((map) => {
   })
   return { done, total }
 })
+
+/** One todo's node, for selectors that read a single field of it. */
+const todo = (id: string) => select.map('todos').child(id)
+
+/** A todo's title, as a selector: an atom over it re-renders only when the title changes. */
+export const titleOf = (id: string) => todo(id).text('title')
+
+/** Whether a todo is done, as a selector: an atom over it ignores title edits. */
+export const doneOf = (id: string) => todo(id).get('done', false)
+
+/**
+ * Whether a todo can be shown: `undefined` while it is missing, its first issue while the schema
+ * rejects it, and `null` otherwise. Derived from the item's typed atom, and Jotai notifies only
+ * when this changes, so a row reading it doesn't re-render while a field is edited.
+ */
+export const statusOf = (id: string) =>
+  atom((get) => {
+    const result = get(todos.item(id))
+    if (!result) return undefined
+    return result.issues ? (result.issues[0]?.message ?? 'Invalid todo') : null
+  })
 
 /** An id that sorts by creation time, since a collection lists its ids sorted. */
 export const newId = () =>
