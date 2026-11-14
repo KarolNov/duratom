@@ -286,7 +286,8 @@ function AddTodo() {
         text={
           <>
             <strong>Add an invalid todo</strong>, as a buggy peer would: it skips the schema and
-            stores <code>done: 'yes'</code>. Both panes show it as unreadable; 🔧 repairs it.
+            stores <code>{"{ done: 'yes' }"}</code>. Both panes show it as unreadable; 🔧 repairs
+            it.
           </>
         }
       >
