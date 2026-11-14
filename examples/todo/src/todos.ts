@@ -49,20 +49,20 @@ export const statusOf = (id: string) =>
   })
 
 /**
- * Stores a value the schema rejects in the first todo that is still valid, writing to the Y.Doc
- * directly as a buggy or outdated peer would: `done` becomes the string `'yes'`. Every pane then
- * reads that todo as `{ issues }`.
+ * Adds a todo the schema rejects, writing to the Y.Doc directly as a buggy or outdated peer would:
+ * its `done` is the string `'yes'`. `todos.create` validates and would refuse it. Every pane lists
+ * it and reads it as `{ issues }`.
  */
-export const breakTodo = atom(null, (get) => {
+export const addInvalidTodo = atom(null, (get, _set, title: string) => {
   const map = get(docAtom)?.getMap<unknown>('todos')
   if (!map) return
-  for (const id of [...map.keys()].sort()) {
-    const item = map.get(id)
-    if (item instanceof Y.Map && typeof item.get('done') === 'boolean') {
-      item.set('done', 'yes')
-      return
-    }
-  }
+  map.set(
+    newId(),
+    new Y.Map<unknown>([
+      ['title', new Y.Text(title || 'Buggy todo')],
+      ['done', 'yes'],
+    ]),
+  )
 })
 
 /**

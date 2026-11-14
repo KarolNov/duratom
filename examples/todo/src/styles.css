@@ -197,11 +197,9 @@ li:has(input[type='checkbox']:checked) .title {
   min-width: 0;
 }
 
-.how .break {
-  border-color: var(--danger);
-  color: var(--danger);
-  font-size: 0.85rem;
-  padding: 2px 8px;
+.icon {
+  padding: 4px 6px;
+  line-height: 1;
 }
 
 .how {

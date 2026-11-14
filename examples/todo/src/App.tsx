@@ -5,7 +5,16 @@ import { memo, useMemo, useState, type FormEvent } from 'react'
 import * as Y from 'yjs'
 import { link } from './link'
 import { scanOnAtom, setScan } from './scan'
-import { breakTodo, doneOf, newId, progress, repairTodo, statusOf, titleOf, todos } from './todos'
+import {
+  addInvalidTodo,
+  doneOf,
+  newId,
+  progress,
+  repairTodo,
+  statusOf,
+  titleOf,
+  todos,
+} from './todos'
 
 /** One person: a doc of their own, and a Jotai store whose `docAtom` holds it. */
 function person(name: string) {
@@ -104,12 +113,9 @@ function HowItWorks() {
                 todo is valid
               </td>
               <td>
-                the todo becomes valid or invalid, never for a field edit.{' '}
-                <button className="break" onClick={() => alice.store.set(breakTodo)}>
-                  Break a todo
-                </button>{' '}
-                writes a value the schema rejects, as a buggy peer would; its row re-renders to show
-                the issue, and Repair re-renders it back.
+                the todo becomes valid or invalid, never for a field edit. Add one with 🐛, which
+                writes a todo the schema rejects as a buggy peer would: only its row renders, to
+                show the issue, and 🔧 re-renders it back into a title and a checkbox.
               </td>
             </tr>
             <tr>
@@ -225,6 +231,7 @@ function TodoList() {
 
 function AddTodo() {
   const create = useSetAtom(todos.create)
+  const addInvalid = useSetAtom(addInvalidTodo)
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string>()
 
@@ -245,6 +252,19 @@ function AddTodo() {
         aria-label="New todo"
       />
       <button type="submit">Add</button>
+      <button
+        type="button"
+        className="icon"
+        onClick={() => {
+          addInvalid(title.trim())
+          setTitle('')
+          setError(undefined)
+        }}
+        title="Add an invalid todo, as a buggy peer would: it skips the schema and stores done as 'yes'"
+        aria-label="Add an invalid todo"
+      >
+        🐛
+      </button>
       {error && <p className="error">{error}</p>}
     </form>
   )
@@ -265,8 +285,17 @@ const TodoRow = memo(function TodoRow({ id }: { id: string }) {
     return (
       <li className="broken">
         <span>Unreadable todo: {status}</span>
-        <button onClick={() => repair(id)}>Repair</button>
-        <button onClick={() => remove(id)}>Remove</button>
+        <button
+          className="icon"
+          onClick={() => repair(id)}
+          title="Repair: replace what the schema rejects with a valid todo, keeping its title"
+          aria-label="Repair"
+        >
+          🔧
+        </button>
+        <button onClick={() => remove(id)} aria-label="Delete">
+          ×
+        </button>
       </li>
     )
   }
