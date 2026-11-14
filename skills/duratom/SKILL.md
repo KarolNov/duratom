@@ -27,6 +27,7 @@ The whole documentation is in `node_modules/duratom/llms-full.txt`: the README, 
 | A list of items with ids                    | `collection(select.map('items'), Schema, shape)`: `ids`, `item(id)`, `create`, `remove` |
 | One field, a count, a derived value         | `liveAtom(select.map('m').get('field', fallback))` or `.project(fn)`                    |
 | A selector that depends on props, in a hook | `useLiveAtom(() => select..., [deps])` from `duratom/react`                             |
+| A typed object whose path depends on props  | `useTypedAtom(() => select..., Schema, shape, [deps])` from `duratom/react`             |
 | No Jotai                                    | `live`, `read`, `write` from `duratom/core`                                             |
 | Values derived from typed atoms             | a plain Jotai `atom((get) => ...)` over them                                            |
 

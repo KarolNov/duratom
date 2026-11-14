@@ -146,6 +146,40 @@ function TodoItem({ id }: { id: string }) {
 }
 ```
 
+### Typed atoms in a hook
+
+`useTypedAtom` from `duratom/react` is `typedAtom` for a path that depends on props. It returns `[result, set]`, as `useAtom` does, and rebuilds the atom only when `deps` change.
+
+```tsx
+import { select } from 'duratom'
+import { useTypedAtom } from 'duratom/react'
+import { z } from 'zod'
+
+const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
+
+// The card's path depends on a prop: the hook rebuilds the atom only when `id` changes.
+export function CardRow({ id }: { id: string }) {
+  const [card, setCard] = useTypedAtom(
+    () => select.map('cards').child(id),
+    Card,
+    { title: 'text' },
+    [id],
+  )
+  if (!card) return <button onClick={() => setCard({ title: 'New', priority: 'low' })}>Add</button>
+  if (card.issues) return <span>Unreadable card</span>
+  return (
+    <label>
+      {card.value.title}
+      <input
+        type="checkbox"
+        checked={card.value.priority === 'high'}
+        onChange={(e) => setCard({ priority: e.target.checked ? 'high' : 'low' })}
+      />
+    </label>
+  )
+}
+```
+
 ### Custom projections
 
 `liveAtom` is the read-only atom under `typedAtom`, for values a schema doesn't describe: one field, a count, anything computed from a node. `select` builds what it reads, and the atom re-renders only when the result changes.
@@ -422,7 +456,7 @@ An entry a peer stored as a plain value is replaced the same way: the item's typ
 
 ## API reference
 
-duratom has three entry points. `duratom` is the one most apps need; `duratom/react` adds a hook, and `duratom/core` has the pieces that work without Jotai.
+duratom has three entry points. `duratom` is the one most apps need; `duratom/react` adds hooks, and `duratom/core` has the pieces that work without Jotai.
 
 ### `duratom`
 
@@ -1053,6 +1087,36 @@ const title = useLiveAtom(
   { keys: ['title'] },
   [id],
 )
+```
+
+##### `useTypedAtom`
+
+```ts
+function useTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any> | (() => Locator<any> | MapPath<any>),
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  deps: DependencyList,
+  options?: AtomOptions,
+): [
+  result: StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>> | undefined,
+  set: (
+    patch: Patch<StandardSchemaV1.InferOutput<Schema>>,
+  ) => StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>>,
+]
+```
+
+Hook form of `typedAtom`, returning `[result, set]` as `useAtom` does: `result` is `undefined`
+while the node is missing, `{ issues }` while it's invalid and `{ value }` otherwise, and
+`set(patch)` merges a patch and returns the schema's result. `locator` can be a function that
+builds it, so it's built only when `deps` change. The atom is rebuilt only when `deps` change,
+so list whatever the locator closes over (an id, say), as with useMemo; `schema` and `shape`
+are taken from the render that built it. `options.docAtom` reads another doc than `docAtom`.
+
+```ts
+const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
+const [card, setCard] = useTypedAtom(() => select.map('cards').child(id), Card, { title: 'text' }, [id])
+if (card && !card.issues) setCard({ priority: 'high' })
 ```
 
 ### `duratom/core`
