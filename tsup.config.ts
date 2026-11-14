@@ -9,5 +9,5 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   clean: true,
-  external: ['yjs', 'jotai', 'react'],
+  external: ['yjs', 'jotai', 'jotai-family', 'react'],
 })
