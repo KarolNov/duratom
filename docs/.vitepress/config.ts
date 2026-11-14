@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 const repo = 'https://github.com/KarolNov/duratom'
 
 /**
- * The docs site: the README, the recipes and the API reference, built from the same Markdown that
+ * The docs site: the guide, the recipes and the API reference, built from the same Markdown that
  * ships in the repo and the package. Built with `pnpm site:build` into `docs/.vitepress/dist`.
  */
 export default defineConfig({
@@ -14,6 +14,8 @@ export default defineConfig({
   srcDir: '..',
   srcExclude: [
     '**/node_modules/**',
+    // The README is the short GitHub and npm page; the site's home is the guide.
+    'README.md',
     'dist/**',
     'examples/**',
     'skills/**',
@@ -22,7 +24,7 @@ export default defineConfig({
     'docs/tsdoc-examples/**',
   ],
   rewrites: {
-    'README.md': 'index.md',
+    'docs/guide.md': 'index.md',
     'docs/api.md': 'api.md',
     'docs/recipes/:name.md': 'recipes/:name.md',
   },

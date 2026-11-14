@@ -30,7 +30,7 @@ const site = 'https://duratom.karolnov.dev'
 
 /** The Markdown docs, in the order `llms-full.txt` joins them. */
 const recipes = ['docs/recipes/sync.md', 'docs/recipes/offline.md', 'docs/recipes/repair.md']
-const markdown = ['README.md', ...recipes, 'skills/duratom/SKILL.md']
+const markdown = ['README.md', 'docs/guide.md', ...recipes, 'skills/duratom/SKILL.md']
 
 const entryPoints = [
   { name: 'duratom', file: 'src/index.ts' },
@@ -371,11 +371,11 @@ const summaryOf = (text: string) =>
     ?.replace(/\s*\n\s*/g, ' ')
     .trim() ?? ''
 
-const readme = docs.get('README.md')!
+const guide = docs.get('docs/guide.md')!
 const llms = [
   '# duratom',
   '',
-  `> ${summaryOf(readme)}`,
+  `> ${summaryOf(guide)}`,
   '',
   'Rules an app must follow: set `docAtom` once per Jotai store; setting a typed atom merges a patch into the doc as it is at write time; invalid data comes back as `{ issues }`, never as an exception; a duratom atom follows the doc only while something is subscribed to it.',
   '',
@@ -383,7 +383,7 @@ const llms = [
   '',
   '## Docs',
   '',
-  `- [README](${repo}/README.md): install, quick start, the main API by example`,
+  `- [Guide](${site}/): install, quick start, the main API by example`,
   `- [API reference](${site}/api): every export of \`duratom\`, \`duratom/react\` and \`duratom/core\``,
   `- [Agent skill](${repo}/skills/duratom/SKILL.md): how to build with duratom, for coding agents`,
   '',
@@ -417,9 +417,9 @@ const forFull = (path: string, text: string) =>
 const full = [
   '# duratom: full documentation',
   '',
-  'Every duratom doc in one file: the README, the recipes and the API reference.',
+  'Every duratom doc in one file: the guide, the recipes and the API reference.',
   '',
-  forFull('README.md', readme),
+  forFull('docs/guide.md', guide),
   '',
   ...recipes.flatMap((path) => [forFull(path, docs.get(path)!), '']),
   forFull('docs/api.md', apiText),

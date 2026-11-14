@@ -11,6 +11,7 @@
     "docs/api.md",
     "docs/tsdoc-examples",
     "docs/.vitepress/dist",
-    "docs/.vitepress/cache"
+    "docs/.vitepress/cache",
+    ".blueprint"
   ]
 }

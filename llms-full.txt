@@ -1,8 +1,8 @@
 # duratom: full documentation
 
-Every duratom doc in one file: the README, the recipes and the API reference.
+Every duratom doc in one file: the guide, the recipes and the API reference.
 
-<!-- README.md -->
+<!-- docs/guide.md -->
 
 ## duratom
 
@@ -70,7 +70,7 @@ createRoot(document.getElementById('root')!).render(
 )
 ```
 
-Add a sync provider to the doc ([sync recipe](docs/recipes/sync.md)) and the same atom shows and edits the todo on every device, with no change to the atom or the component.
+Add a sync provider to the doc ([sync recipe](recipes/sync.md)) and the same atom shows and edits the todo on every device, with no change to the atom or the component.
 
 ### Rules
 
@@ -278,15 +278,11 @@ export { result }
 ### Docs
 
 - [API reference](https://duratom.karolnov.dev/api): every export, generated from the TSDoc.
-- Recipes: [sync between devices](docs/recipes/sync.md), [offline storage](docs/recipes/offline.md), [repair a broken node](docs/recipes/repair.md).
-- Example apps: [a two-pane shared todo list](examples/todo), and [an offline-first todo list synced through a Durable Object](examples/sync), with end-to-end tests.
-- For AI agents: [`llms.txt`](llms.txt), [`llms-full.txt`](llms-full.txt) (every doc in one file) and an agent skill, [`skills/duratom/SKILL.md`](skills/duratom/SKILL.md). The npm package ships `llms-full.txt` and the skill, so an agent finds them in `node_modules/duratom`.
+- Recipes: [sync between devices](recipes/sync.md), [offline storage](recipes/offline.md), [repair a broken node](recipes/repair.md).
+- Example apps: [a two-pane shared todo list](https://github.com/KarolNov/duratom/tree/main/examples/todo), and [an offline-first todo list synced through a Durable Object](https://github.com/KarolNov/duratom/tree/main/examples/sync), with end-to-end tests.
+- For AI agents: [`llms.txt`](https://duratom.karolnov.dev/llms.txt), [`llms-full.txt`](https://duratom.karolnov.dev/llms-full.txt) (every doc in one file) and an agent skill, [`skills/duratom/SKILL.md`](https://github.com/KarolNov/duratom/tree/main/skills/duratom/SKILL.md). The npm package ships `llms-full.txt` and the skill, so an agent finds them in `node_modules/duratom`.
 
 Every code snippet in these docs is compiled against the source in CI, and so is every `@example` in the TSDoc.
-
-### License
-
-MIT
 
 <!-- docs/recipes/sync.md -->
 
