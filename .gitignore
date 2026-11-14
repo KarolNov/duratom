@@ -6,3 +6,4 @@ dist
 docs/tsdoc-examples
 docs/.vitepress/dist
 docs/.vitepress/cache
+.wrangler

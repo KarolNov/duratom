@@ -72,7 +72,7 @@ Add a sync provider to the doc ([sync recipe](docs/recipes/sync.md)) and the sam
 
 ## Rules
 
-Four rules cover how duratom behaves; the [API reference](docs/api.md) has the details.
+Four rules cover how duratom behaves; the [API reference](https://duratom-docs.karolnovljakovic.workers.dev/api) has the details.
 
 - **One doc per store.** Atoms read the Y.Doc in `docAtom`, so set it once on each Jotai store before reading an atom. An app with several docs gives an atom its own doc atom: `typedAtom(locator, Schema, shape, { docAtom: otherDocAtom })`.
 - **Patches merge.** Setting a typed atom with `{ priority: 'high' }` reads the node as it is in the doc at that moment, merges the patch into it and writes only what changed, so a peer's concurrent edit to another field survives. `set(prev => patch)` gets that fresh value as `prev`. On a node with no valid value, the patch is the whole value: that creates a missing node, or repairs an invalid one.
@@ -257,7 +257,7 @@ export { result }
 
 ## Docs
 
-- [API reference](docs/api.md): every export, generated from the TSDoc.
+- [API reference](https://duratom-docs.karolnovljakovic.workers.dev/api): every export, generated from the TSDoc.
 - Recipes: [sync between devices](docs/recipes/sync.md), [offline storage](docs/recipes/offline.md), [repair a broken node](docs/recipes/repair.md).
 - [Example app](examples/todo): a two-pane shared todo list.
 - For AI agents: [`llms.txt`](llms.txt), [`llms-full.txt`](llms-full.txt) (every doc in one file) and an agent skill, [`skills/duratom/SKILL.md`](skills/duratom/SKILL.md). The npm package ships `llms-full.txt` and the skill, so an agent finds them in `node_modules/duratom`.

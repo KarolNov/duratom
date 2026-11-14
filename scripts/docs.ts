@@ -25,6 +25,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const check = process.argv.includes('--check')
 const problems: string[] = []
 const repo = 'https://github.com/KarolNov/duratom/blob/main'
+/** The deployed docs site (pnpm site:deploy). */
+const site = 'https://duratom-docs.karolnovljakovic.workers.dev'
 
 /** The Markdown docs, in the order `llms-full.txt` joins them. */
 const recipes = ['docs/recipes/sync.md', 'docs/recipes/offline.md', 'docs/recipes/repair.md']
@@ -382,7 +384,7 @@ const llms = [
   '## Docs',
   '',
   `- [README](${repo}/README.md): install, quick start, the main API by example`,
-  `- [API reference](${repo}/docs/api.md): every export of \`duratom\`, \`duratom/react\` and \`duratom/core\``,
+  `- [API reference](${site}/api): every export of \`duratom\`, \`duratom/react\` and \`duratom/core\``,
   `- [Agent skill](${repo}/skills/duratom/SKILL.md): how to build with duratom, for coding agents`,
   '',
   '## Recipes',
