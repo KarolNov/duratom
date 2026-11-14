@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
-import { atom, type WritableAtom } from 'jotai'
+import { atom, type PrimitiveAtom, type WritableAtom } from 'jotai'
 import type * as Y from 'yjs'
 import { Locator, MapPath } from '../core/index.js'
 import { create, isMap, read, reader, write } from '../schema/index.js'
@@ -58,6 +58,19 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
   options: AtomOptions = {},
 ): TypedAtom<StandardSchemaV1.InferOutput<Schema>> {
+  return versionedTypedAtom(locator, schema, shape, options).typed
+}
+
+/**
+ * `typedAtom` with the atom its read depends on to project the doc again, so a write made
+ * elsewhere, such as a collection's `remove`, can make an unmounted read see it.
+ */
+export function versionedTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any>,
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  options: AtomOptions = {},
+): { typed: TypedAtom<StandardSchemaV1.InferOutput<Schema>>; version: PrimitiveAtom<number> } {
   type T = StandardSchemaV1.InferOutput<Schema>
   const located = locator instanceof MapPath ? locator.locator : locator
   const last = located.steps.at(-1)
@@ -94,7 +107,7 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
     return write(schema, shape, node, merged as T)
   }
 
-  return atom(
+  const typed: TypedAtom<T> = atom(
     (get) => get(live),
     (get, set, patch: Patch<T>) => {
       const doc = readDoc(get, options)
@@ -106,6 +119,7 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
       return result
     },
   )
+  return { typed, version }
 }
 
 const missingParent = 'The node is missing, and so is the Y.Map it would be created in'
