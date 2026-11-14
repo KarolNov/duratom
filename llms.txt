@@ -9,7 +9,7 @@ The npm package ships `llms-full.txt` (every doc in one file) and an agent skill
 ## Docs
 
 - [README](https://github.com/KarolNov/duratom/blob/main/README.md): install, quick start, the main API by example
-- [API reference](https://duratom-docs.karolnovljakovic.workers.dev/api): every export of `duratom`, `duratom/react` and `duratom/core`
+- [API reference](https://duratom.karolnov.dev/api): every export of `duratom`, `duratom/react` and `duratom/core`
 - [Agent skill](https://github.com/KarolNov/duratom/blob/main/skills/duratom/SKILL.md): how to build with duratom, for coding agents
 
 ## Recipes

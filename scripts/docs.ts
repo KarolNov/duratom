@@ -26,7 +26,7 @@ const check = process.argv.includes('--check')
 const problems: string[] = []
 const repo = 'https://github.com/KarolNov/duratom/blob/main'
 /** The deployed docs site (pnpm site:deploy). */
-const site = 'https://duratom-docs.karolnovljakovic.workers.dev'
+const site = 'https://duratom.karolnov.dev'
 
 /** The Markdown docs, in the order `llms-full.txt` joins them. */
 const recipes = ['docs/recipes/sync.md', 'docs/recipes/offline.md', 'docs/recipes/repair.md']
