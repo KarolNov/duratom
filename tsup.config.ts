@@ -1,9 +1,13 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: { index: 'src/index.ts', 'core/index': 'src/core/index.ts' },
+  entry: {
+    index: 'src/index.ts',
+    'react/index': 'src/react/index.ts',
+    'core/index': 'src/core/index.ts',
+  },
   format: ['esm'],
   dts: true,
   clean: true,
-  external: ['yjs'],
+  external: ['yjs', 'jotai', 'react'],
 })

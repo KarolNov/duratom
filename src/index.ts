@@ -8,3 +8,4 @@ export {
   type RecordKind,
   type Shape,
 } from './schema/index.js'
+export * from './atoms/index.js'
