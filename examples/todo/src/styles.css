@@ -333,7 +333,12 @@ li:has(input[type='checkbox']:checked) .title {
 }
 
 .tip-bubble code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.95em;
+  white-space: nowrap;
 }
 
 .tip-danger .tip-bubble {
