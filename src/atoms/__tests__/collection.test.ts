@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import { atom, createStore } from 'jotai'
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { z } from 'zod'
 import { at, collection, docAtom, select, type CreateResult } from '../../index.js'
@@ -140,6 +140,46 @@ describe('create', () => {
     expect(result.issues?.[0]?.message).toMatch(/collection's Y.Map is missing/)
     expect(doc.getMap('boards').size).toBe(0)
   })
+
+  it("returns an invalid value's own issues while the map is missing or the id taken", () => {
+    const doc = new Y.Doc()
+    const store = createStore()
+    store.set(docAtom, doc)
+    const cards = collection(select.map('boards').child('b1').child('cards'), Todo, todoShape)
+    const invalid = { title: 'No done' } as Todo
+    expect(store.set(cards.create, invalid, 'a').issues?.[0]?.path).toEqual(['done'])
+
+    const { store: s, todos } = setup()
+    s.set(todos.create, milk, 'a')
+    expect(s.set(todos.create, invalid, 'a').issues?.[0]?.path).toEqual(['done'])
+  })
+
+  it('generates a v4 UUID where crypto.randomUUID is missing, as on a plain-HTTP page', () => {
+    const real = globalThis.crypto
+    vi.stubGlobal('crypto', { getRandomValues: real.getRandomValues.bind(real) })
+    try {
+      const { store, todos } = setup()
+      const id = created(store.set(todos.create, milk))
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+      expect(created(store.set(todos.create, bread))).not.toBe(id)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("doesn't add an atom to the item family", () => {
+    const { store, todos } = setup()
+    store.set(todos.create, milk, 'a')
+    store.set(todos.create, bread)
+    expect([...todos.item.getParams()]).toEqual([])
+  })
+
+  it('refreshes an unmounted read of the item made before it existed', () => {
+    const { store, todos } = setup()
+    expect(store.get(todos.item('a'))).toBeUndefined()
+    store.set(todos.create, milk, 'a')
+    expect(store.get(todos.item('a'))).toEqual({ value: milk })
+  })
 })
 
 describe('item', () => {
@@ -168,6 +208,13 @@ describe('item', () => {
     expect(store.get(todos.ids)).toEqual(['broken'])
     expect(store.get(todos.item('broken'))?.issues).toHaveLength(1)
   })
+
+  it('refreshes an unmounted read of ids when setting a missing item creates it', () => {
+    const { store, todos } = setup()
+    expect(store.get(todos.ids)).toEqual([])
+    expect(store.set(todos.item('a'), milk)).toEqual({ value: milk })
+    expect(store.get(todos.ids)).toEqual(['a'])
+  })
 })
 
 describe('remove', () => {
@@ -195,6 +242,27 @@ describe('remove', () => {
     map.set('a', new Y.Map())
     store.set(todos.remove, 'a')
     expect([...todos.item.getParams()]).toEqual([])
+  })
+
+  it('drops the removed item atom from the family', () => {
+    const { store, todos } = setup()
+    store.set(todos.create, milk, 'a')
+    store.set(todos.create, bread, 'b')
+    todos.item('a')
+    todos.item('b')
+    store.set(todos.remove, 'a')
+    expect([...todos.item.getParams()]).toEqual(['b'])
+  })
+
+  it('refreshes an item atom a caller holds after the family dropped it', () => {
+    const { store, todos } = setup()
+    store.set(todos.create, milk, 'a')
+    const held = todos.item('a')
+    expect(store.get(held)).toEqual({ value: milk })
+    // Every lookup now replaces the atom, as an expiry rule would once it ran out.
+    todos.item.setShouldRemove(() => true)
+    store.set(todos.remove, 'a')
+    expect(store.get(held)).toBeUndefined()
   })
 })
 
