@@ -190,7 +190,18 @@ li:has(input[type='checkbox']:checked) .title {
 
 .broken {
   color: var(--danger);
-  justify-content: space-between;
+}
+
+.broken span {
+  flex: 1;
+  min-width: 0;
+}
+
+.how .break {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-size: 0.85rem;
+  padding: 2px 8px;
 }
 
 .how {

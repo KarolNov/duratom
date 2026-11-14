@@ -5,7 +5,7 @@ import { memo, useMemo, useState, type FormEvent } from 'react'
 import * as Y from 'yjs'
 import { link } from './link'
 import { scanOnAtom, setScan } from './scan'
-import { doneOf, newId, progress, statusOf, titleOf, todos } from './todos'
+import { breakTodo, doneOf, newId, progress, repairTodo, statusOf, titleOf, todos } from './todos'
 
 /** One person: a doc of their own, and a Jotai store whose `docAtom` holds it. */
 function person(name: string) {
@@ -103,7 +103,14 @@ function HowItWorks() {
                 a Jotai atom derived from <code>todos.item(id)</code> that keeps only whether the
                 todo is valid
               </td>
-              <td>the todo becomes valid or invalid, never for a field edit</td>
+              <td>
+                the todo becomes valid or invalid, never for a field edit.{' '}
+                <button className="break" onClick={() => alice.store.set(breakTodo)}>
+                  Break a todo
+                </button>{' '}
+                writes a value the schema rejects, as a buggy peer would; its row re-renders to show
+                the issue, and Repair re-renders it back.
+              </td>
             </tr>
             <tr>
               <td>List</td>
@@ -251,12 +258,14 @@ function AddTodo() {
 const TodoRow = memo(function TodoRow({ id }: { id: string }) {
   const status = useAtomValue(useMemo(() => statusOf(id), [id]))
   const remove = useSetAtom(todos.remove)
+  const repair = useSetAtom(repairTodo)
 
   if (status === undefined) return null
   if (status !== null) {
     return (
       <li className="broken">
         <span>Unreadable todo: {status}</span>
+        <button onClick={() => repair(id)}>Repair</button>
         <button onClick={() => remove(id)}>Remove</button>
       </li>
     )

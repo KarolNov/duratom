@@ -1,4 +1,4 @@
-import { collection, select } from 'duratom'
+import { collection, docAtom, select } from 'duratom'
 import { atom } from 'jotai'
 import * as Y from 'yjs'
 import { z } from 'zod'
@@ -47,6 +47,34 @@ export const statusOf = (id: string) =>
     if (!result) return undefined
     return result.issues ? (result.issues[0]?.message ?? 'Invalid todo') : null
   })
+
+/**
+ * Stores a value the schema rejects in the first todo that is still valid, writing to the Y.Doc
+ * directly as a buggy or outdated peer would: `done` becomes the string `'yes'`. Every pane then
+ * reads that todo as `{ issues }`.
+ */
+export const breakTodo = atom(null, (get) => {
+  const map = get(docAtom)?.getMap<unknown>('todos')
+  if (!map) return
+  for (const id of [...map.keys()].sort()) {
+    const item = map.get(id)
+    if (item instanceof Y.Map && typeof item.get('done') === 'boolean') {
+      item.set('done', 'yes')
+      return
+    }
+  }
+})
+
+/**
+ * Repairs a todo the schema rejects. While a todo has no valid value, its typed atom's setter
+ * takes a whole value and replaces what the schema rejected; this keeps the stored title when
+ * there is one. Repair is app code because only the app knows what a sensible value is.
+ */
+export const repairTodo = atom(null, (get, set, id: string) => {
+  const item = get(docAtom)?.getMap<unknown>('todos').get(id)
+  const title = item instanceof Y.Map ? String(item.get('title') ?? '').trim() : ''
+  return set(todos.item(id), { title: title || 'Repaired todo', done: false })
+})
 
 /** An id that sorts by creation time, since a collection lists its ids sorted. */
 export const newId = () =>
