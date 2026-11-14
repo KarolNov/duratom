@@ -1,5 +1,5 @@
 import { live as liveSource, type Live, type LiveSpec } from '../core/index.js'
-import { atom, type Atom, type PrimitiveAtom } from 'jotai'
+import { atom, type Atom, type createStore, type PrimitiveAtom } from 'jotai'
 import type * as Y from 'yjs'
 
 export type { LiveSpec }
@@ -45,12 +45,49 @@ export function readDoc(get: Getter, options: AtomOptions): Y.Doc {
 
 type Message = { type: 'start'; register: (stop: () => void) => void } | { type: 'stop' }
 
+type Store = ReturnType<typeof createStore>
+type DocHolder = Atom<Y.Doc | null | undefined>
+
+/** Each doc atom's clock, shared by every atom reading that doc atom. */
+const clocks = new WeakMap<DocHolder, PrimitiveAtom<number>>()
+
+/**
+ * A counter that goes up after every transaction of the doc in `holder`, in every store that
+ * reads it. Jotai keeps an unmounted atom's value until one of its dependencies changes, and a
+ * doc change isn't one, so an unmounted read depends on this to project the doc again. One
+ * listener per store and doc, attached when the store first reads the clock, follows the doc
+ * the holder holds.
+ */
+function clockOf(holder: DocHolder): PrimitiveAtom<number> {
+  const known = clocks.get(holder)
+  if (known) return known
+  const clock = atom(0)
+  const init = (store: Store) => {
+    let unbind: (() => void) | undefined
+    const bind = () => {
+      unbind?.()
+      unbind = undefined
+      const doc = store.get(holder)
+      if (!doc) return
+      const tick = () => store.set(clock, (n) => n + 1)
+      doc.on('afterTransaction', tick)
+      unbind = () => doc.off('afterTransaction', tick)
+    }
+    bind()
+    store.sub(holder, bind)
+  }
+  // Jotai 3 calls the first, Jotai 2 the second, when a store first references the atom.
+  Object.assign(clock, { INTERNAL_onInit: init, unstable_onInit: init })
+  clocks.set(holder, clock)
+  return clock
+}
+
 /**
  * A read-only atom over one node of the doc in `docAtom` (or the doc atom given in `options`),
  * built on `live` from `duratom/core`. While something is subscribed it observes only the
  * located node, re-runs `project` on matching transactions and updates only when `equals` says
  * the result changed. Unsubscribes when the last subscriber goes away; read while unmounted it
- * just projects the current doc.
+ * projects the doc as it is now.
  *
  * A change skipped by the `origin` filter is not remembered: the value catches up at the next
  * accepted change.
@@ -62,19 +99,7 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
   spec: LiveSpec<N, T>,
   options: AtomOptions = {},
 ): Atom<T> {
-  return versionedLiveAtom(spec, options).live
-}
-
-/**
- * `liveAtom` with the atom its read depends on to project the doc again. Jotai keeps an
- * unmounted atom's value until a dependency changes, and a doc change isn't one, so a write
- * through an atom bumps `version` to make an unmounted read see it.
- */
-export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
-  spec: LiveSpec<N, T>,
-  options: AtomOptions,
-): { live: Atom<T>; version: PrimitiveAtom<number> } {
-  const version = atom(0)
+  const clock = clockOf(options.docAtom ?? docAtom)
   const getDoc = (get: Getter) => readDoc(get, options)
   // One source per doc, so reads and mounts share its locator and kept reference.
   const sources = new WeakMap<Y.Doc, Live<T>>()
@@ -87,9 +112,11 @@ export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
   const snapshot = atom<{ value: T } | null>(null)
   const live = atom(
     (get) => {
-      get(version)
       const snap = get(snapshot)
-      return snap ? snap.value : sourceFor(getDoc(get)).get()
+      // Mounted, the snapshot follows the node alone, so other edits recompute nothing.
+      if (snap) return snap.value
+      get(clock)
+      return sourceFor(getDoc(get)).get()
     },
     (get, set, message: Message) => {
       if (message.type === 'stop') return set(snapshot, null)
@@ -107,5 +134,5 @@ export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
       send({ type: 'stop' })
     }
   }
-  return { live, version }
+  return live
 }

@@ -4,7 +4,7 @@ import type * as Y from 'yjs'
 import { Locator, MapPath } from '../core/index.js'
 import { create, isMap, read, reader, write } from '../schema/index.js'
 import type { Exact } from '../schema/shape.js'
-import { readDoc, versionedLiveAtom, type AtomOptions } from './live-atom.js'
+import { liveAtom, readDoc, type AtomOptions } from './live-atom.js'
 
 /**
  * What a typed atom's setter takes: a patch of the fields to change, or a function of the node's
@@ -66,10 +66,7 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
       ? { locator: new Locator(located.steps.slice(0, -1)), key: last.key }
       : undefined
 
-  const { live, version } = versionedLiveAtom(
-    { locate: () => located, ...reader(schema, shape) },
-    options,
-  )
+  const live = liveAtom({ locate: () => located, ...reader(schema, shape) }, options)
 
   const update = (doc: Y.Doc, patch: Patch<T>): StandardSchemaV1.Result<T> => {
     const node = located.resolve(doc)
@@ -95,13 +92,11 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
 
   return atom(
     (get) => get(live),
-    (get, set, patch: Patch<T>) => {
+    (get, _set, patch: Patch<T>) => {
       const doc = readDoc(get, options)
       let result!: StandardSchemaV1.Result<T>
       // One transaction, so nothing changes the node between reading it and writing the merge.
       doc.transact(() => (result = update(doc, patch)))
-      // An unmounted read would otherwise keep the value from before the write.
-      if (!result.issues) set(version, (n) => n + 1)
       return result
     },
   )
