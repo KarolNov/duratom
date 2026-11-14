@@ -52,7 +52,80 @@ export function App() {
           </Provider>
         ))}
       </div>
+      <HowItWorks />
     </main>
+  )
+}
+
+/** What each component reads, and so when it re-renders. Static, so it renders once. */
+function HowItWorks() {
+  return (
+    <section className="how">
+      <h2>What re-renders, and why</h2>
+      <p>
+        duratom atoms notify only when the value they show changes. A Y.Doc edit that leaves an
+        atom's value equal reaches no component. So each component here subscribes to the smallest
+        atom that holds what it shows, and an edit re-renders only the components showing it. Tick{' '}
+        <em>Show re-renders</em> to see it: typing in a title outlines that title and nothing else.
+      </p>
+      <div className="table">
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Reads</th>
+              <th>Re-renders when</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Title</td>
+              <td>
+                <code>select.map('todos').child(id).text('title')</code>, a selector for one field,
+                through <code>useLiveAtom</code>
+              </td>
+              <td>that todo's title changes, here or from the other pane</td>
+            </tr>
+            <tr>
+              <td>Checkbox</td>
+              <td>
+                <code>select.map('todos').child(id).get('done', false)</code>
+              </td>
+              <td>that todo is ticked or unticked</td>
+            </tr>
+            <tr>
+              <td>Row</td>
+              <td>
+                a Jotai atom derived from <code>todos.item(id)</code> that keeps only whether the
+                todo is valid
+              </td>
+              <td>the todo becomes valid or invalid, never for a field edit</td>
+            </tr>
+            <tr>
+              <td>List</td>
+              <td>
+                <code>todos.ids</code>, which ignores edits inside items
+              </td>
+              <td>a todo is added or removed; the other rows are memoized and stay put</td>
+            </tr>
+            <tr>
+              <td>Count</td>
+              <td>
+                <code>select.map('todos').project(…)</code>, counting into{' '}
+                <code>{'{ done, total }'}</code> and compared deeply
+              </td>
+              <td>either number changes, not when a title is typed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Writes cost no re-renders either. Each part writes a patch with{' '}
+        <code>useSetAtom(todos.item(id))</code>, and a setter alone doesn't subscribe. The patch
+        changes one field, like <code>{'{ done: true }'}</code>, and is merged into the todo as it
+        is in the doc at write time. So it never overwrites a field the other pane just edited.
+      </p>
+    </section>
   )
 }
 

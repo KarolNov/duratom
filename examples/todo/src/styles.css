@@ -192,3 +192,44 @@ li:has(input[type='checkbox']:checked) .title {
   color: var(--danger);
   justify-content: space-between;
 }
+
+.how {
+  margin-top: 24px;
+  color: var(--muted);
+  max-width: 75ch;
+}
+
+.how h2 {
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.how code {
+  font-size: 0.85em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Wide tables scroll inside their box rather than widening the page on a phone. */
+.how .table {
+  overflow-x: auto;
+}
+
+.how table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.how th,
+.how td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.how th,
+.how td:first-child {
+  color: var(--text);
+}
