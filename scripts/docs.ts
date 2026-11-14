@@ -25,7 +25,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const check = process.argv.includes('--check')
 const problems: string[] = []
 const repo = 'https://github.com/KarolNov/duratom/blob/main'
-/** The deployed docs site (pnpm site:deploy). */
+/** The deployed docs site, which Cloudflare Workers Builds deploys from main. */
 const site = 'https://duratom.karolnov.dev'
 
 /** The Markdown docs, in the order `llms-full.txt` joins them. */

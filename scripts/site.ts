@@ -1,7 +1,9 @@
 /**
  * Builds the docs site into docs/.vitepress/dist: the VitePress build, `llms.txt` and
  * `llms-full.txt` beside it, and a `_headers` file that lets browsers cache hashed assets for good.
- * `pnpm site:deploy` then deploys it as Workers static assets (site/wrangler.jsonc).
+ * Cloudflare Workers Builds runs this and deploys the result as Workers static assets
+ * (site/wrangler.jsonc): main to duratom.karolnov.dev, other branches as preview versions.
+ * `pnpm site:deploy` does the same by hand.
  */
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, writeFileSync } from 'node:fs'
