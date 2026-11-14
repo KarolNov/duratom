@@ -35,18 +35,35 @@ export function App() {
     wire.setConnected(!connected)
     setConnected(!connected)
   }
+  const [latency, setLatency] = useState(0)
+  const changeLatency = (seconds: number) => {
+    wire.setLatency(seconds * 1000)
+    setLatency(seconds)
+  }
 
   return (
     <main>
       <header>
         <h1>duratom todo</h1>
         <p>
-          Two people, each with their own Y.Doc, linked in memory. Every edit syncs; cut the link to
-          edit offline, and reconnecting merges both sides.
+          Two people, each with their own Y.Doc, linked in memory. Every edit syncs after the
+          latency you set; cut the link to edit offline, and reconnecting merges both sides.
         </p>
         <button className={connected ? 'link on' : 'link off'} onClick={toggle}>
           {connected ? 'Connected: disconnect' : 'Offline: reconnect'}
         </button>
+        <label className="latency">
+          Latency
+          <input
+            type="range"
+            min={0}
+            max={5}
+            step={0.1}
+            value={latency}
+            onChange={(e) => changeLatency(Number(e.target.value))}
+          />
+          <output>{latency.toFixed(1)} s</output>
+        </label>
       </header>
       <div className="panes">
         {[alice, bob].map(({ name, store }) => (

@@ -1,6 +1,6 @@
 # duratom todo
 
-A shared todo list in two panes, built on duratom's public API only. Each pane is one person with their own `Y.Doc` and Jotai store; the docs are linked in memory, so edits sync live without a server. Disconnect the link to edit both sides offline, then reconnect to watch them merge.
+A shared todo list in two panes, built on duratom's public API only. Each pane is one person with their own `Y.Doc` and Jotai store; the docs are linked in memory, so edits sync live without a server. Raise the latency slider to watch updates arrive late and edits made in the meantime merge. Disconnect the link to edit both sides offline, then reconnect to watch them merge.
 
 ```sh
 pnpm install
