@@ -1,5 +1,5 @@
 import { live as liveSource, type Live, type LiveSpec } from '../core/index.js'
-import { atom, type Atom } from 'jotai'
+import { atom, type Atom, type PrimitiveAtom } from 'jotai'
 import type * as Y from 'yjs'
 
 export type { LiveSpec }
@@ -27,6 +27,22 @@ export interface AtomOptions {
   docAtom?: Atom<Y.Doc | null | undefined>
 }
 
+type Getter = <V>(a: Atom<V>) => V
+
+/** The doc in `options.docAtom`, or in `docAtom`; throws naming the doc atom when it holds none. */
+export function readDoc(get: Getter, options: AtomOptions): Y.Doc {
+  const holder = options.docAtom ?? docAtom
+  const doc = get(holder)
+  if (!doc) {
+    throw new Error(
+      holder === docAtom
+        ? 'docAtom has not been set on this store'
+        : 'The doc atom passed to this atom holds no doc on this store',
+    )
+  }
+  return doc
+}
+
 type Message = { type: 'start'; register: (stop: () => void) => void } | { type: 'stop' }
 
 /**
@@ -46,18 +62,20 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
   spec: LiveSpec<N, T>,
   options: AtomOptions = {},
 ): Atom<T> {
-  const holder = options.docAtom ?? docAtom
-  const getDoc = (get: <V>(a: Atom<V>) => V) => {
-    const doc = get(holder)
-    if (!doc) {
-      throw new Error(
-        holder === docAtom
-          ? 'docAtom has not been set on this store'
-          : 'The doc atom passed to this atom holds no doc on this store',
-      )
-    }
-    return doc
-  }
+  return versionedLiveAtom(spec, options).live
+}
+
+/**
+ * `liveAtom` with the atom its read depends on to project the doc again. Jotai keeps an
+ * unmounted atom's value until a dependency changes, and a doc change isn't one, so a write
+ * through an atom bumps `version` to make an unmounted read see it.
+ */
+export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
+  spec: LiveSpec<N, T>,
+  options: AtomOptions,
+): { live: Atom<T>; version: PrimitiveAtom<number> } {
+  const version = atom(0)
+  const getDoc = (get: Getter) => readDoc(get, options)
   // One source per doc, so reads and mounts share its locator and kept reference.
   const sources = new WeakMap<Y.Doc, Live<T>>()
   const sourceFor = (doc: Y.Doc) => {
@@ -69,6 +87,7 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
   const snapshot = atom<{ value: T } | null>(null)
   const live = atom(
     (get) => {
+      get(version)
       const snap = get(snapshot)
       return snap ? snap.value : sourceFor(getDoc(get)).get()
     },
@@ -88,5 +107,5 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
       send({ type: 'stop' })
     }
   }
-  return live
+  return { live, version }
 }
