@@ -49,9 +49,32 @@ export function App() {
       <header>
         <h1>duratom todo</h1>
         <p>
-          Two people, each with their own Y.Doc, linked in memory. Every edit syncs after the
-          latency you set; cut the link to edit offline, and reconnecting merges both sides.
+          A shared todo list for two people, Alice and Bob. Each has their own Y.Doc, and the two
+          docs are linked in memory the way a sync provider links them over a network.
         </p>
+        <ul className="try">
+          <li>
+            <strong>Edit in one pane</strong> to see it arrive in the other: add, tick, rename, or
+            type in the same title from both sides.
+          </li>
+          <li>
+            <strong>Latency</strong> delays every update by up to 5 seconds. Edit both panes in the
+            meantime and watch the edits merge when they arrive.
+          </li>
+          <li>
+            <strong>Disconnect</strong> to edit both sides offline. Reconnecting sends each side
+            what it missed.
+          </li>
+          <li>
+            <strong>🐛</strong> beside Add adds a todo the schema rejects, as a buggy peer would.
+            Both panes show it as unreadable instead of crashing, and <strong>🔧</strong> repairs it
+            with a valid value, keeping its title.
+          </li>
+          <li>
+            <strong>Show re-renders</strong> outlines each component as it re-renders and explains
+            below the panes which atom each one reads.
+          </li>
+        </ul>
         <Controls />
       </header>
       <div className="panes">
