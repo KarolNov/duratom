@@ -7,7 +7,7 @@ description: Build React apps whose state lives in a Yjs Y.Doc, through duratom'
 
 duratom turns nodes of a Yjs `Y.Doc` into Jotai atoms. A typed atom reads one `Y.Map` through a Standard Schema validator (zod, valibot, arktype) and writes validated patches into it; a collection covers a map of such items; a live atom reads any projection of a node. Each atom re-renders only when its own value changes. Sync and offline storage come from Yjs providers attached to the doc, never from duratom.
 
-The whole documentation is in `node_modules/duratom/llms-full.txt`: the README, the recipes and the API reference with every signature. Read it when this file doesn't answer a question; don't read duratom's source to find out how to use it.
+The whole documentation is in `node_modules/duratom/llms-full.txt`: the guide, the recipes and the API reference with every signature. Read it when this file doesn't answer a question; don't read duratom's source to find out how to use it.
 
 ## Rules
 
