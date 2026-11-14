@@ -10,6 +10,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js"
@@ -22,13 +26,19 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check"
   },
+  "dependencies": {
+    "@standard-schema/spec": "^1.0.0"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "arktype": "^2.2.8",
     "oxfmt": "^0.71.0",
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
+    "valibot": "^1.5.0",
     "vitest": "^5.0.3",
-    "yjs": "^13.6.33"
+    "yjs": "^13.6.33",
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
     "yjs": "^13.6.33"

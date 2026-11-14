@@ -6,4 +6,7 @@ Work in progress; not published yet.
 
 ## Entry points
 
-- `duratom/core`: store-agnostic observation of one node of a Y.Doc (`live`, `observeLocated`, `at`, `select`, `shallowEqual`, `deepEqual`). Use it without Jotai.
+- `duratom`: shape builders (`map`, `record`, `array`, `isMap`) that name which fields of a node are shared types.
+- `duratom/core`: store-agnostic pieces, usable without Jotai.
+  - Observation of one node of a Y.Doc: `live`, `observeLocated`, `at`, `select`, `shallowEqual`, `deepEqual`.
+  - Typed reads and validated writes through any Standard Schema validator (zod, valibot, arktype): `read`, `reader`, `write`, and the errors `AsyncValidationUnsupportedError` and `UnsupportedValueError`.

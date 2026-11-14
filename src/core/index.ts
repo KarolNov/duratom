@@ -10,3 +10,11 @@ export {
   type ProjectOptions,
   type Selector,
 } from './select.js'
+export {
+  AsyncValidationUnsupportedError,
+  read,
+  reader,
+  UnsupportedValueError,
+  write,
+  type Reader,
+} from '../schema/index.js'
