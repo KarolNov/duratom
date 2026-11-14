@@ -259,7 +259,7 @@ export { result }
 
 - [API reference](https://duratom.karolnov.dev/api): every export, generated from the TSDoc.
 - Recipes: [sync between devices](docs/recipes/sync.md), [offline storage](docs/recipes/offline.md), [repair a broken node](docs/recipes/repair.md).
-- [Example app](examples/todo): a two-pane shared todo list.
+- Example apps: [a two-pane shared todo list](examples/todo), and [an offline-first todo list synced through a Durable Object](examples/sync), with end-to-end tests.
 - For AI agents: [`llms.txt`](llms.txt), [`llms-full.txt`](llms-full.txt) (every doc in one file) and an agent skill, [`skills/duratom/SKILL.md`](skills/duratom/SKILL.md). The npm package ships `llms-full.txt` and the skill, so an agent finds them in `node_modules/duratom`.
 
 Every code snippet in these docs is compiled against the source in CI, and so is every `@example` in the TSDoc.

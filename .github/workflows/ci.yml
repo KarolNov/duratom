@@ -30,3 +30,8 @@ jobs:
       # The example imports the built package, so it is checked after the build.
       - run: pnpm --filter duratom-example-todo typecheck
       - run: pnpm --filter duratom-example-todo build
+      - run: pnpm --filter duratom-example-sync typecheck
+      - run: pnpm --filter duratom-example-sync build
+      # Drives the sync example in Chromium against its Worker under `vite dev`.
+      - run: pnpm --filter duratom-example-sync exec playwright install --with-deps chromium
+      - run: pnpm --filter duratom-example-sync e2e

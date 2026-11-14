@@ -40,7 +40,8 @@
     "docs:check": "node scripts/docs.ts --check && tsc -p docs/tsconfig.json && tsc -p docs/snippets/server/tsconfig.json",
     "site:build": "node scripts/site.ts",
     "site:dev": "pnpm site:build && wrangler dev --config site/wrangler.jsonc",
-    "site:deploy": "pnpm site:build && wrangler deploy --config site/wrangler.jsonc"
+    "site:deploy": "pnpm site:build && wrangler deploy --config site/wrangler.jsonc",
+    "example:sync:deploy": "pnpm build && pnpm --filter duratom-example-sync run deploy"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0"

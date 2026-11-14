@@ -1,0 +1,10 @@
+{
+  // The sync server and the app, as one Worker: static assets for the app, and a Durable Object
+  // per room for the docs. `vite dev` runs it locally through @cloudflare/vite-plugin.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "duratom-example-sync",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-23",
+  "durable_objects": { "bindings": [{ "name": "Docs", "class_name": "Docs" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Docs"] }],
+}
