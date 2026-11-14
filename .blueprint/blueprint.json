@@ -83,8 +83,9 @@
       ],
       "specVersion": "05787bdf9199657c",
       "anchorsFiles": {
-        "README.md": "57d6f510339c",
+        "README.md": "0448d03a9bfe",
         "docs/api.md": "1772f0137cd4",
+        "docs/guide.md": "151e3b013d73",
         "docs/recipes/offline.md": "a8a313860c20",
         "docs/recipes/repair.md": "3ca901f01fc3",
         "docs/recipes/sync.md": "3e6336734f5c",
@@ -100,12 +101,12 @@
         "docs/snippets/sync-client.ts": "d794dfc12267",
         "docs/snippets/typed-hook.tsx": "0cce514900ff",
         "docs/tsconfig.json": "746844c7e1c2",
-        "llms-full.txt": "53516c37cf1f",
-        "llms.txt": "3f7862e9eb72",
-        "scripts/docs.ts": "bd8f22bc0dce",
-        "skills/duratom/SKILL.md": "41e400eba4c7"
+        "llms-full.txt": "6853956cdf3e",
+        "llms.txt": "c9315365b225",
+        "scripts/docs.ts": "2042f5a85011",
+        "skills/duratom/SKILL.md": "82c06501dfa8"
       },
-      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+      "syncedCommit": "793190f321af9ecf928ff5701b2d2a520d556280"
     }
   },
   "changes": {
