@@ -74,11 +74,13 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
  * `liveAtom` with the atom its read depends on to project the doc again. Jotai keeps an
  * unmounted atom's value until a dependency changes, and a doc change isn't one, so a write
  * through an atom bumps `version` to make an unmounted read see it. Other doc edits still
- * leave an unmounted read stale, as `liveAtom` says.
+ * leave an unmounted read stale, as `liveAtom` says. The read also depends on each atom in
+ * `refreshers`, so a write made elsewhere, such as a collection's `remove`, can refresh it too.
  */
 export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
   spec: LiveSpec<N, T>,
   options: AtomOptions,
+  refreshers: readonly Atom<unknown>[] = [],
 ): { live: Atom<T>; version: PrimitiveAtom<number> } {
   const version = atom(0)
   const getDoc = (get: Getter) => readDoc(get, options)
@@ -94,6 +96,7 @@ export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
   const live = atom(
     (get) => {
       get(version)
+      for (const refresher of refreshers) get(refresher)
       const snap = get(snapshot)
       return snap ? snap.value : sourceFor(getDoc(get)).get()
     },

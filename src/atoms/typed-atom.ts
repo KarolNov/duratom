@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
-import { atom, type PrimitiveAtom, type WritableAtom } from 'jotai'
+import { atom, type Atom, type WritableAtom } from 'jotai'
 import type * as Y from 'yjs'
 import { Locator, MapPath } from '../core/index.js'
 import { create, isMap, read, reader, write } from '../schema/index.js'
@@ -58,19 +58,20 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
   options: AtomOptions = {},
 ): TypedAtom<StandardSchemaV1.InferOutput<Schema>> {
-  return versionedTypedAtom(locator, schema, shape, options).typed
+  return refreshedTypedAtom(locator, schema, shape, options, [])
 }
 
 /**
- * `typedAtom` with the atom its read depends on to project the doc again, so a write made
- * elsewhere, such as a collection's `remove`, can make an unmounted read see it.
+ * `typedAtom` whose read also depends on each atom in `refreshers`, so a write made elsewhere,
+ * such as a collection's `create` or `remove`, can make an unmounted read see it.
  */
-export function versionedTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
+export function refreshedTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
   locator: Locator<any> | MapPath<any>,
   schema: Schema,
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
-  options: AtomOptions = {},
-): { typed: TypedAtom<StandardSchemaV1.InferOutput<Schema>>; version: PrimitiveAtom<number> } {
+  options: AtomOptions,
+  refreshers: readonly Atom<unknown>[],
+): TypedAtom<StandardSchemaV1.InferOutput<Schema>> {
   type T = StandardSchemaV1.InferOutput<Schema>
   const located = locator instanceof MapPath ? locator.locator : locator
   const last = located.steps.at(-1)
@@ -83,6 +84,7 @@ export function versionedTypedAtom<Schema extends StandardSchemaV1, const S exte
   const { live, version } = versionedLiveAtom(
     { locate: () => located, ...reader(schema, shape) },
     options,
+    refreshers,
   )
 
   const update = (doc: Y.Doc, patch: Patch<T>): StandardSchemaV1.Result<T> => {
@@ -107,7 +109,7 @@ export function versionedTypedAtom<Schema extends StandardSchemaV1, const S exte
     return write(schema, shape, node, merged as T)
   }
 
-  const typed: TypedAtom<T> = atom(
+  return atom(
     (get) => get(live),
     (get, set, patch: Patch<T>) => {
       const doc = readDoc(get, options)
@@ -119,7 +121,6 @@ export function versionedTypedAtom<Schema extends StandardSchemaV1, const S exte
       return result
     },
   )
-  return { typed, version }
 }
 
 const missingParent = 'The node is missing, and so is the Y.Map it would be created in'
