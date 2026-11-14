@@ -49,8 +49,13 @@ type Message = { type: 'start'; register: (stop: () => void) => void } | { type:
  * A read-only atom over one node of the doc in `docAtom` (or the doc atom given in `options`),
  * built on `live` from `duratom/core`. While something is subscribed it observes only the
  * located node, re-runs `project` on matching transactions and updates only when `equals` says
- * the result changed. Unsubscribes when the last subscriber goes away; read while unmounted it
- * just projects the current doc.
+ * the result changed. Unsubscribes when the last subscriber goes away.
+ *
+ * Read while nothing is subscribed (`store.get` outside a component), it can be stale: Jotai
+ * keeps an unmounted atom's value until one of its atom dependencies changes, and a doc edit
+ * isn't one. It projects the doc on its first read and again whenever it is mounted, but not
+ * after later doc edits made while unmounted. Subscribe (`useAtomValue`, `store.sub`) to follow
+ * the doc; outside Jotai, `live` from `duratom/core` reads the doc as it is now.
  *
  * A change skipped by the `origin` filter is not remembered: the value catches up at the next
  * accepted change.
@@ -68,7 +73,8 @@ export function liveAtom<N extends Y.AbstractType<any>, T>(
 /**
  * `liveAtom` with the atom its read depends on to project the doc again. Jotai keeps an
  * unmounted atom's value until a dependency changes, and a doc change isn't one, so a write
- * through an atom bumps `version` to make an unmounted read see it.
+ * through an atom bumps `version` to make an unmounted read see it. Other doc edits still
+ * leave an unmounted read stale, as `liveAtom` says.
  */
 export function versionedLiveAtom<N extends Y.AbstractType<any>, T>(
   spec: LiveSpec<N, T>,

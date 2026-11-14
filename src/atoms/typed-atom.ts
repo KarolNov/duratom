@@ -26,7 +26,8 @@ export type TypedAtom<T> = WritableAtom<
 /**
  * A typed, writable atom over the `Y.Map` at `locator`, read through `schema` and `shape`: a
  * `liveAtom` over `reader(schema, shape)` with a setter. It observes only that node, skips edits
- * inside its `'xml'` fields, and re-renders only when the result changes.
+ * inside its `'xml'` fields, and re-renders only when the result changes. Like a `liveAtom`, it
+ * can read stale while nothing is subscribed, except right after its own setter wrote.
  *
  * Setting it reads the node as it is in the doc at write time, not the atom's last value, and
  * merges the patch into it: fields the patch leaves out, and keys the schema doesn't know, are
