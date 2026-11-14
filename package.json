@@ -1,9 +1,23 @@
 {
   "name": "duratom",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Durable, live Jotai atoms over a Y.Doc: typed reads, validated writes, re-renders only on change.",
+  "keywords": [
+    "atoms",
+    "collaboration",
+    "crdt",
+    "jotai",
+    "local-first",
+    "react",
+    "standard-schema",
+    "yjs"
+  ],
+  "homepage": "https://duratom.karolnov.dev",
+  "bugs": {
+    "url": "https://github.com/KarolNov/duratom/issues"
+  },
   "license": "MIT",
+  "author": "Karol Novljaković",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/KarolNov/duratom.git"
@@ -30,6 +44,9 @@
       "import": "./dist/core/index.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
@@ -41,7 +58,8 @@
     "site:build": "node scripts/site.ts",
     "site:dev": "pnpm site:build && wrangler dev --config site/wrangler.jsonc",
     "site:deploy": "pnpm site:build && wrangler deploy --config site/wrangler.jsonc",
-    "example:sync:deploy": "pnpm build && pnpm --filter duratom-example-sync run deploy"
+    "example:sync:deploy": "pnpm build && pnpm --filter duratom-example-sync run deploy",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0"
