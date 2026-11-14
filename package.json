@@ -37,7 +37,10 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "docs": "node scripts/docs.ts",
-    "docs:check": "node scripts/docs.ts --check && tsc -p docs/tsconfig.json && tsc -p docs/snippets/server/tsconfig.json"
+    "docs:check": "node scripts/docs.ts --check && tsc -p docs/tsconfig.json && tsc -p docs/snippets/server/tsconfig.json",
+    "site:build": "node scripts/site.ts",
+    "site:dev": "pnpm site:build && wrangler dev --config site/wrangler.jsonc",
+    "site:deploy": "pnpm site:build && wrangler deploy --config site/wrangler.jsonc"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0"
@@ -60,7 +63,9 @@
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
     "valibot": "^1.5.0",
+    "vitepress": "1.6.4",
     "vitest": "^5.0.3",
+    "wrangler": "4.156.0",
     "y-indexeddb": "9.0.12",
     "y-partyserver": "2.2.0",
     "yjs": "^13.6.33",

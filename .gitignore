@@ -4,3 +4,5 @@ dist
 .DS_Store
 .vitest
 docs/tsdoc-examples
+docs/.vitepress/dist
+docs/.vitepress/cache

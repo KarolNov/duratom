@@ -9,6 +9,8 @@
     ".vitest",
     "**/bench/results",
     "docs/api.md",
-    "docs/tsdoc-examples"
+    "docs/tsdoc-examples",
+    "docs/.vitepress/dist",
+    "docs/.vitepress/cache"
   ]
 }
