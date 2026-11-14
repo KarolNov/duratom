@@ -40,7 +40,7 @@ To run the same tests against a deployed Worker instead of `vite dev`:
 E2E_BASE_URL=https://duratom-example-sync.<your-subdomain>.workers.dev pnpm --filter duratom-example-sync e2e
 ```
 
-Run them against a deployment too: the concurrent-edits test caught a bug that only shows on Cloudflare. The provider closes its socket with no close code, partyserver 0.5.10 doesn't answer that close, and the browser can't reconnect until the old socket times out. Local workerd answers anyway. `Docs.onClose` in the Worker works around it.
+Run them against a deployment too: the concurrent-edits test caught a bug that only shows on Cloudflare. The provider closes its socket with no close code, partyserver 0.5.10 doesn't answer that close, and the browser can't reconnect until the old socket times out. Local workerd answers anyway. `Docs.onClose` in the Worker works around it until [cloudflare/partykit#429](https://github.com/cloudflare/partykit/issues/429) is fixed.
 
 The tests go offline with the app's button, which disconnects the provider. Playwright's `context.setOffline` doesn't close a WebSocket that's already open, so it can't stand in for a dropped connection here.
 

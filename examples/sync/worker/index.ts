@@ -29,6 +29,7 @@ export class Docs extends YServer<Env> {
    * partyserver 0.5.10 takes 1005 to mean no Close frame was sent and doesn't answer it, so on
    * Cloudflare the browser's socket stays closing and the provider can't reconnect until it times
    * out. Answering the close here completes the handshake.
+   * https://github.com/cloudflare/partykit/issues/429
    */
   override onClose(connection: Connection, code: number, reason: string, wasClean: boolean) {
     super.onClose(connection, code, reason, wasClean)
