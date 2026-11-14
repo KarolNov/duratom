@@ -1,0 +1,1361 @@
+# duratom: full documentation
+
+Every duratom doc in one file: the README, the recipes and the API reference.
+
+<!-- README.md -->
+
+## duratom
+
+Durable, live Jotai atoms over a Y.Doc: read typed values, write validated patches, and re-render only when what an atom shows changes.
+
+A [Y.Doc](https://docs.yjs.dev) is the shared, conflict-free state that sync providers keep the same on every device. duratom turns a node of it into a Jotai atom: you read a value your schema has checked, you write a patch that is merged into the doc and validated first, and a component re-renders only when the value it shows changes, whoever changed the doc. Persistence and network sync come from existing Yjs providers; duratom has no provider code of its own.
+
+### Install
+
+```bash
+npm install duratom jotai jotai-family yjs
+```
+
+Add a [Standard Schema](https://standardschema.dev) validator for typed atoms, such as zod, valibot or arktype, and React for `duratom/react`. duratom needs `yjs` 13.6.33 or later, `jotai` 2.9 or later and `jotai-family`.
+
+### Quick start
+
+Paste this into `src/main.tsx` of a new Vite React app (`npm create vite@latest my-app -- --template react-ts`), then `npm install duratom jotai jotai-family yjs zod` and `npm run dev`.
+
+```tsx
+// src/main.tsx of a new Vite React app: npm create vite@latest my-app -- --template react-ts
+import { docAtom, select, typedAtom } from 'duratom'
+import { createStore, Provider, useAtom } from 'jotai'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import * as Y from 'yjs'
+import { z } from 'zod'
+
+// What a todo is, and where it lives in the doc: the map `first` in the root map `todos`.
+// `title` is collaborative text, so two people typing in it both keep their edits.
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const todoAtom = typedAtom(select.map('todos').child('first'), Todo, { title: 'text' })
+
+// One Y.Doc per Jotai store. A sync provider would connect this doc to other devices.
+const store = createStore()
+store.set(docAtom, new Y.Doc())
+
+function TodoRow() {
+  // undefined while the todo is missing, { issues } while it's invalid, { value } otherwise.
+  const [todo, setTodo] = useAtom(todoAtom)
+  if (!todo) {
+    // Setting a missing node with a whole valid value creates it.
+    return <button onClick={() => setTodo({ title: 'Learn duratom', done: false })}>Add</button>
+  }
+  if (todo.issues) return <p>Can't read this todo: {todo.issues[0]?.message}</p>
+  return (
+    <label>
+      {/* A patch changes only the fields it names. */}
+      <input
+        type="checkbox"
+        checked={todo.value.done}
+        onChange={(e) => setTodo({ done: e.target.checked })}
+      />
+      <input value={todo.value.title} onChange={(e) => setTodo({ title: e.target.value })} />
+    </label>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Provider store={store}>
+      <TodoRow />
+    </Provider>
+  </StrictMode>,
+)
+```
+
+Add a sync provider to the doc ([sync recipe](docs/recipes/sync.md)) and the same atom shows and edits the todo on every device, with no change to the atom or the component.
+
+### Rules
+
+Four rules cover how duratom behaves; the [API reference](https://duratom.karolnov.dev/api) has the details.
+
+- **One doc per store.** Atoms read the Y.Doc in `docAtom`, so set it once on each Jotai store before reading an atom. An app with several docs gives an atom its own doc atom: `typedAtom(locator, Schema, shape, { docAtom: otherDocAtom })`.
+- **Patches merge.** Setting a typed atom with `{ priority: 'high' }` reads the node as it is in the doc at that moment, merges the patch into it and writes only what changed, so a peer's concurrent edit to another field survives. `set(prev => patch)` gets that fresh value as `prev`. On a node with no valid value, the patch is the whole value: that creates a missing node, or repairs an invalid one.
+- **Results, not exceptions.** A typed atom reads as `undefined` while its node is missing, `{ issues }` while the node doesn't satisfy the schema, and `{ value }` otherwise. Setting it returns the schema's result; an invalid patch changes nothing and returns `{ issues }`. Only misconfiguration throws: an async schema (`AsyncValidationUnsupportedError`), a value a `Y.Map` can't store (`UnsupportedValueError`), or no doc in `docAtom`.
+- **Subscribed atoms follow the doc.** An atom observes its node while something is subscribed to it (a component, or `store.sub`), and then only that node. Read with `store.get` while nothing is subscribed, it can show a value from before a peer's edit; it does see its own writes. Use `live` from `duratom/core` to read the doc as it is now outside Jotai.
+
+### Shapes
+
+A schema says what a value is; a shape says which of its fields are Yjs shared types, so that peers editing them at once merge their edits. Every field the shape doesn't name is a plain value, where the last writer wins.
+
+- `'text'`: a `Y.Text`, read as a string. Two people typing in it both keep their edits.
+- `'xml'`: a `Y.XmlFragment`, read as the fragment itself, for rich-text editors.
+- `map(shape)`: a nested `Y.Map` with fixed keys, read as an object.
+- `record(itemShape)`: a `Y.Map` of item maps with any keys, read as an object of objects.
+- `array()`: a `Y.Array` of plain values, read as an array.
+
+A shape's keys are checked against the schema's type, so a key the schema doesn't have, or a kind its field can't hold, is a type error. An empty shape, `{}`, makes every field plain.
+
+### Collections
+
+`collection` covers a map of items: an `ids` atom that changes only when an item is added or removed, a typed atom per item, and `create` and `remove`.
+
+```tsx
+import { collection, select } from 'duratom'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { z } from 'zod'
+
+const Todo = z.object({ title: z.string().min(1), done: z.boolean() })
+
+// Every todo in the root map `todos`, each one a Y.Map read through `Todo`.
+const todos = collection(select.map('todos'), Todo, { title: 'text' })
+
+export function TodoList() {
+  // Changes only when a todo is added or removed, not when one is edited.
+  const ids = useAtomValue(todos.ids)
+  const create = useSetAtom(todos.create)
+  const add = () => {
+    const result = create({ title: 'New todo', done: false })
+    if (result.issues) console.warn(result.issues)
+  }
+  return (
+    <>
+      <ul>
+        {ids.map((id) => (
+          <TodoItem key={id} id={id} />
+        ))}
+      </ul>
+      <button onClick={add}>Add</button>
+    </>
+  )
+}
+
+function TodoItem({ id }: { id: string }) {
+  // The same typed atom for the same id; it re-renders this row only.
+  const [todo, setTodo] = useAtom(todos.item(id))
+  const remove = useSetAtom(todos.remove)
+  if (!todo || todo.issues) return <li>Unreadable todo</li>
+  return (
+    <li>
+      <input
+        type="checkbox"
+        checked={todo.value.done}
+        onChange={(e) => setTodo({ done: e.target.checked })}
+      />
+      {todo.value.title}
+      <button onClick={() => remove(id)}>Remove</button>
+    </li>
+  )
+}
+```
+
+### Typed atoms in a hook
+
+`useTypedAtom` from `duratom/react` is `typedAtom` for a path that depends on props. It returns `[result, set]`, as `useAtom` does, and rebuilds the atom only when `deps` change.
+
+```tsx
+import { select } from 'duratom'
+import { useTypedAtom } from 'duratom/react'
+import { z } from 'zod'
+
+const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
+
+// The card's path depends on a prop: the hook rebuilds the atom only when `id` changes.
+export function CardRow({ id }: { id: string }) {
+  const [card, setCard] = useTypedAtom(
+    () => select.map('cards').child(id),
+    Card,
+    { title: 'text' },
+    [id],
+  )
+  if (!card) return <button onClick={() => setCard({ title: 'New', priority: 'low' })}>Add</button>
+  if (card.issues) return <span>Unreadable card</span>
+  return (
+    <label>
+      {card.value.title}
+      <input
+        type="checkbox"
+        checked={card.value.priority === 'high'}
+        onChange={(e) => setCard({ priority: e.target.checked ? 'high' : 'low' })}
+      />
+    </label>
+  )
+}
+```
+
+### Custom projections
+
+`liveAtom` is the read-only atom under `typedAtom`, for values a schema doesn't describe: one field, a count, anything computed from a node. `select` builds what it reads, and the atom re-renders only when the result changes.
+
+```tsx
+import { liveAtom, select } from 'duratom'
+import { useLiveAtom } from 'duratom/react'
+import { useAtomValue } from 'jotai'
+import * as Y from 'yjs'
+
+// One field, with a fallback for a missing map, a missing key or a value of another type.
+const boardName = liveAtom(select.map('board').get('name', 'Untitled'))
+
+// Your own projection: re-renders only when the counts change, not on every edit to a todo.
+const progress = liveAtom(
+  select.map('todos').project((todos) => {
+    let done = 0
+    todos?.forEach((todo) => {
+      if (todo instanceof Y.Map && todo.get('done') === true) done++
+    })
+    return { done, total: todos?.size ?? 0 }
+  }),
+)
+
+export function Header() {
+  const name = useAtomValue(boardName)
+  const { done, total } = useAtomValue(progress)
+  return (
+    <h1>
+      {name}: {done} of {total} done
+    </h1>
+  )
+}
+
+// A selector that depends on props: the hook rebuilds the atom only when `id` changes.
+export function Title({ id }: { id: string }) {
+  const title = useLiveAtom(() => select.map('todos').child(id).text('title'), [id])
+  return <span>{title}</span>
+}
+```
+
+### Several docs
+
+Every atom takes a last argument, `{ docAtom }`, naming the atom that holds its doc. Atoms without it read `docAtom`.
+
+```ts
+import { select, typedAtom } from 'duratom'
+import { atom, createStore } from 'jotai'
+import * as Y from 'yjs'
+import { z } from 'zod'
+
+// A second doc, beside the one in `docAtom`: settings kept apart from the shared board, say.
+const settingsDocAtom = atom<Y.Doc | null>(null)
+
+const Settings = z.object({ theme: z.enum(['light', 'dark']) })
+const settingsAtom = typedAtom(
+  select.map('settings').child('user'),
+  Settings,
+  {},
+  {
+    docAtom: settingsDocAtom,
+  },
+)
+
+const store = createStore()
+store.set(settingsDocAtom, new Y.Doc())
+store.set(settingsAtom, { theme: 'dark' })
+```
+
+### Without Jotai
+
+`duratom/core` has the pieces under the atoms, for other state libraries or none: `live` follows one node of a doc, and `read` and `write` read and write a `Y.Map` through a schema.
+
+```ts
+import { live, read, select, write } from 'duratom/core'
+import * as Y from 'yjs'
+import { z } from 'zod'
+
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const doc = new Y.Doc()
+const todo = doc.getMap('todos').set('first', new Y.Map())
+
+// Validated writes and typed reads, on any Y.Map.
+write(Todo, { title: 'text' }, todo, { title: 'Learn duratom', done: false })
+const result = read(Todo, { title: 'text' }, todo) // { value: { title: 'Learn duratom', done: false } }
+
+// A live value in the shape useSyncExternalStore takes, for any state library or none.
+const done = live(doc, select.map('todos').child('first').get('done', false))
+const stop = done.subscribe((value) => console.log('done is now', value))
+write(Todo, { title: 'text' }, todo, { title: 'Learn duratom', done: true }) // logs: done is now true
+stop()
+
+export { result }
+```
+
+### Docs
+
+- [API reference](https://duratom.karolnov.dev/api): every export, generated from the TSDoc.
+- Recipes: [sync between devices](docs/recipes/sync.md), [offline storage](docs/recipes/offline.md), [repair a broken node](docs/recipes/repair.md).
+- [Example app](examples/todo): a two-pane shared todo list.
+- For AI agents: [`llms.txt`](llms.txt), [`llms-full.txt`](llms-full.txt) (every doc in one file) and an agent skill, [`skills/duratom/SKILL.md`](skills/duratom/SKILL.md). The npm package ships `llms-full.txt` and the skill, so an agent finds them in `node_modules/duratom`.
+
+Every code snippet in these docs is compiled against the source in CI, and so is every `@example` in the TSDoc.
+
+### License
+
+MIT
+
+<!-- docs/recipes/sync.md -->
+
+## Sync between devices
+
+Connect the doc in `docAtom` to a sync server with y-partyserver on Cloudflare; every atom then shows and edits the shared state, with no change to the atoms.
+
+duratom atoms read whatever is in their doc, and a Yjs provider keeps a doc the same on every device. So sync is a provider attached to the doc you put in `docAtom`: atoms, components and schemas stay as they are. This recipe uses [y-partyserver](https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver), which runs one Durable Object per room on Cloudflare Workers; any Yjs provider, such as y-websocket, plugs in the same way.
+
+### Client
+
+```bash
+npm install y-partyserver
+```
+
+```ts
+import { docAtom } from 'duratom'
+import { createStore } from 'jotai'
+import YProvider from 'y-partyserver/provider'
+import * as Y from 'yjs'
+
+const doc = new Y.Doc()
+// Connects the doc to the room `my-board` of the `Docs` server, and keeps it in sync both ways.
+// The host is the Worker's: localhost:8787 under `wrangler dev`.
+const provider = new YProvider('localhost:8787', 'my-board', doc, { party: 'docs' })
+
+export const store = createStore()
+store.set(docAtom, doc)
+
+// Before closing the app, or when the doc is no longer needed:
+export const disconnect = () => provider.destroy()
+```
+
+Pass `store` to Jotai's `<Provider store={store}>`. Edits made before the provider connects, or while it's offline, are sent when it connects.
+
+### Server
+
+```bash
+npm install partyserver y-partyserver yjs
+```
+
+```ts
+// src/index.ts of a Cloudflare Worker.
+import { routePartykitRequest } from 'partyserver'
+import { YServer } from 'y-partyserver'
+import * as Y from 'yjs'
+
+interface Env {
+  // The binding's name, in kebab case, is the `party` the client connects to: `docs`.
+  Docs: DurableObjectNamespace<Docs>
+}
+
+/** One Durable Object per room, holding that room's doc and saving it to its own storage. */
+export class Docs extends YServer<Env> {
+  override async onLoad() {
+    const saved = await this.ctx.storage.get<Uint8Array>('doc')
+    if (saved) Y.applyUpdate(this.document, saved)
+  }
+
+  // Called a few seconds after edits, and when the last client leaves.
+  override async onSave() {
+    await this.ctx.storage.put('doc', Y.encodeStateAsUpdate(this.document))
+  }
+}
+
+export default {
+  async fetch(request, env) {
+    return (await routePartykitRequest(request, env)) ?? new Response('Not found', { status: 404 })
+  },
+} satisfies ExportedHandler<Env>
+```
+
+Bind the class as a Durable Object in `wrangler.jsonc`, then run `npx wrangler dev`, or `npx wrangler deploy` and point the client at the Worker's host:
+
+```jsonc
+{
+  "name": "my-app-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "durable_objects": { "bindings": [{ "name": "Docs", "class_name": "Docs" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Docs"] }],
+}
+```
+
+Without `onLoad` and `onSave`, a room keeps its doc only while someone is connected. Durable Object storage limits the size of one value, so store a doc that grows past it in R2, or as several updates.
+
+### Offline as well
+
+Sync and [offline storage](offline.md) work together: attach both providers to the same doc. Edits made offline are saved locally and sent when the connection comes back.
+
+<!-- docs/recipes/offline.md -->
+
+## Offline storage
+
+Save the doc in the browser with y-indexeddb, so the app opens with the last state and works offline; atoms don't change.
+
+A Yjs provider that stores the doc locally is all it takes: [y-indexeddb](https://github.com/yjs/y-indexeddb) writes every change to IndexedDB and loads it back when the app starts.
+
+```bash
+npm install y-indexeddb
+```
+
+```ts
+import { docAtom } from 'duratom'
+import { createStore } from 'jotai'
+import { IndexeddbPersistence } from 'y-indexeddb'
+import * as Y from 'yjs'
+
+const doc = new Y.Doc()
+// Saves every change to IndexedDB under this name, and loads what was saved last time.
+const persistence = new IndexeddbPersistence('my-app', doc)
+
+export const store = createStore()
+store.set(docAtom, doc)
+
+// Atoms read the doc as soon as it's set; this resolves once the saved state is loaded into it.
+export const loaded = persistence.whenSynced
+```
+
+Atoms can be read before `loaded` resolves: a typed atom reads `undefined` for a node that isn't loaded yet, then its value once it is, like a node a peer creates. To avoid showing an empty app for a moment, wait for `loaded` before rendering.
+
+Use a name per doc: two docs saved under one name are merged into one. To share the doc between devices as well, add a [sync provider](sync.md) to the same doc.
+
+<!-- docs/recipes/repair.md -->
+
+## Repair a broken node
+
+Fix a node a peer stored with data your schema rejects, by setting its typed atom with a whole valid value.
+
+A peer running an older or buggy version of an app can store a value your schema rejects: a string where a boolean belongs, a missing field. duratom never throws for it. The node's typed atom reads `{ issues }`, and a collection still lists its id, so the app can show it as broken and offer to fix it.
+
+Repairing is app code, because only the app knows what a sensible value is. While a node has no valid value, setting its typed atom takes a whole value and replaces what the schema rejected, keeping keys neither the shape nor the value names, such as fields a newer peer added.
+
+```ts
+import { collection, docAtom, select } from 'duratom'
+import { atom } from 'jotai'
+import * as Y from 'yjs'
+import { z } from 'zod'
+
+const Todo = z.object({ title: z.string().min(1), done: z.boolean() })
+const todos = collection(select.map('todos'), Todo, { title: 'text' })
+
+/**
+ * Repairs a todo a peer stored with a value the schema rejects. While an item has no valid value,
+ * setting its atom takes a whole value and replaces what the schema rejected. Only the app knows
+ * what a sensible value is: here, the stored title when there is one, and not done.
+ */
+export const repairTodo = atom(null, (get, set, id: string) => {
+  const stored = get(docAtom)?.getMap<unknown>('todos').get(id)
+  const title = stored instanceof Y.Map ? String(stored.get('title') ?? '').trim() : ''
+  return set(todos.item(id), { title: title || 'Repaired todo', done: false })
+})
+
+/** Whether a todo needs repair: listed, but read as `{ issues }` or not a map at all. */
+export const needsRepair = (id: string) =>
+  atom((get) => {
+    const result = get(todos.item(id))
+    return !result || result.issues !== undefined
+  })
+```
+
+A row can read `needsRepair(id)` to show a repair button, and call `useSetAtom(repairTodo)(id)` when it's pressed. `repairTodo` returns the schema's result: `{ issues }` if the value it built is still invalid, in which case nothing changed.
+
+An entry a peer stored as a plain value is replaced the same way: the item's typed atom reads `undefined`, and setting it with a whole value stores a new map in its place. An entry stored as another shared type, such as a `Y.Text`, reads as `{ issues }` and can't be replaced through the item's atom; delete it with the collection's `remove` and create the item again.
+
+<!-- docs/api.md -->
+
+## API reference
+
+duratom has three entry points. `duratom` is the one most apps need; `duratom/react` adds hooks, and `duratom/core` has the pieces that work without Jotai.
+
+### `duratom`
+
+#### Functions and values
+
+##### `array`
+
+```ts
+const array: () => ArrayKind
+```
+
+A `Y.Array` of plain values, read as a plain array. Writing it changes only the items that
+differ, so items peers add at once are all kept.
+
+```ts
+const Card = z.object({ tags: z.array(z.string()) })
+const card = typedAtom(select.map('cards').child('card-1'), Card, { tags: array() })
+```
+
+##### `isMap`
+
+```ts
+const isMap: (value: unknown) => value is Y.Map<unknown>
+```
+
+Whether `value` is a `Y.Map` that duratom reads as one: a `Y.XmlHook` extends `Y.Map`, but peers
+decode it as its own type, so it isn't.
+
+```ts
+const stored = doc.getMap('todos').get(id)
+if (isMap(stored)) console.log(stored.get('title'))
+```
+
+##### `map`
+
+```ts
+const map: <const S extends AnyShape>(shape: S) => MapKind<S>
+```
+
+A nested `Y.Map` with the fixed keys `shape` describes, read as a plain object.
+
+```ts
+const Card = z.object({ title: z.string(), meta: z.object({ note: z.string() }) })
+const card = typedAtom(select.map('cards').child('card-1'), Card, { meta: map({ note: 'text' }) })
+```
+
+##### `record`
+
+```ts
+const record: <const S extends AnyShape>(itemShape: S) => RecordKind<S>
+```
+
+A `Y.Map` with dynamic keys whose every value is a `Y.Map` following `itemShape`.
+
+```ts
+const Board = z.object({ cards: z.record(z.string(), z.object({ title: z.string() })) })
+const board = typedAtom(select.map('boards').child('b1'), Board, { cards: record({ title: 'text' }) })
+```
+
+##### `ArrayPath`
+
+```ts
+class ArrayPath<V = unknown>
+```
+
+A path to a `Y.Array`. End it with a projection to get a `Selector`.
+
+```ts
+const log = select.map('board').child('log', 'array')
+const entries = liveAtom(log.length())
+```
+
+- `toArray(): Selector<V[]>`
+
+  The items as stored, `[]` when the array is missing. Compared shallowly.
+
+- `length(): Selector<number>`
+
+  The number of items, 0 when the array is missing.
+
+- `toJSON(): Selector<unknown[]>`
+
+  `toJSON()` of the array and everything under it, `[]` when missing. Observes deeply; compared deeply.
+
+- `readonly locator: Locator<Y.Array<V>>`
+- `project<T>(project: (node: Y.Array<V> | undefined) => T, options?: ProjectOptions<T>): Selector<T>`
+
+  Your own projection of the node, `undefined` when it is missing or of
+  another kind. Observes deeply and compares with `deepEqual` unless
+  `options` say otherwise; `keys` alone observes only those keys.
+
+- `project<T>(projection: Projection<T>): Selector<T>`
+
+  A packaged projection, such as `reader(schema, shape)`, with its own
+  observe options and `equals`. It gets the node as stored, whatever its kind.
+
+
+##### `at`
+
+```ts
+const at: {
+  map: <V = unknown>(name: string) => Locator<Y.Map<V>>;
+  array: <V = unknown>(name: string) => Locator<Y.Array<V>>;
+}
+```
+
+Starts a `Locator` at a root type of the doc. `select` builds on it, and is what most code
+uses; `at` is for a `LiveSpec` written by hand.
+
+```ts
+const spec = {
+  locate: () => at.map('cards').child<Y.Map<unknown>>('card-1'),
+  project: (card: Y.Map<unknown> | undefined) => card?.size ?? 0,
+}
+```
+
+##### `deepEqual`
+
+```ts
+const deepEqual: (a: unknown, b: unknown) => boolean
+```
+
+Compares arrays and plain objects all the way down, and bytes byte by byte.
+Any other object (a `Map`, a `Set`, a `Date`, a shared type) equals only itself.
+
+```ts
+deepEqual({ tags: ['a'] }, { tags: ['a'] }) // true
+const tags = liveAtom({ ...select.map('card').get('tags', []), equals: deepEqual })
+```
+
+##### `Locator`
+
+```ts
+class Locator<N extends Y.AbstractType<any> = Y.AbstractType<any>>
+```
+
+A path from a root type to the node a component cares about. It is a path
+rather than a bare function of the doc so the subscription can watch the key
+in each parent map: that is how a node that does not exist yet (a card that
+another tab has not created) or that gets deleted is noticed without
+observing the whole doc.
+
+```ts
+const card = at.map('cards').child<Y.Map<unknown>>('card-1')
+card.resolve(doc) // the Y.Map, or undefined while it's missing
+```
+
+- `constructor(readonly steps: readonly Step[])`
+- `readonly steps: readonly Step[]`
+- `child<C extends Y.AbstractType<any> = Y.AbstractType<any>>(key: string): Locator<C>`
+
+  Descend into the Y type stored under `key` of a map.
+
+- `resolve(doc: Y.Doc): N | undefined`
+
+##### `MapPath`
+
+```ts
+class MapPath<V = unknown>
+```
+
+A path to a `Y.Map`. Descend with `child`, or end with a projection to get a `Selector`.
+`select.map(name)` starts one; `typedAtom` and `collection` take one as their locator.
+
+```ts
+const card = select.map('cards').child('card-1')
+const title = liveAtom(card.text('title'))
+const flags = liveAtom(card.pick({ done: false, starred: false }))
+```
+
+- `child<W = V extends Y.Map<infer X> ? X : unknown>(key: string): MapPath<W>`
+
+  Descend into the `Y.Map` stored under `key`.
+
+- `child<W = V extends Y.Array<infer X> ? X : unknown>(key: string, kind: 'array'): ArrayPath<W>`
+
+  Descend into the `Y.Array` stored under `key`.
+
+- `get(key: string): Selector<V | undefined>`
+
+  The value under `key`, or `undefined` when it or the map is missing. Observes only `key`.
+
+- `get<D>(key: string, fallback: D): Selector<undefined extends D ? V | Checked<D> : Checked<D>>`
+
+  The value under `key` when it has the same type as `fallback` (`typeof`,
+  with null, arrays, bytes and plain objects told apart), else `fallback`. So
+  a missing map, a missing key and a value of the wrong type all read as
+  `fallback`. An `undefined` fallback reads the value as `get(key)` does.
+  A literal type widens to its primitive, since only the kind is checked; the
+  items of an array and the fields of an object aren't checked. An array or
+  object fallback is read frozen, a bytes fallback as a copy. Observes only `key`.
+
+- `pick<D extends Record<string, unknown>>(defaults: D): Selector<{ [K in keyof D]: Checked<D[K]> }>`
+
+  An object with each key of `defaults`, read as `get(key, defaults[key])`
+  reads it. Observes only those keys; compared shallowly.
+
+- `text(key: string): Selector<string>`
+
+  The string of the `Y.Text` under `key`, `''` when it is missing or not a
+  `Y.Text` (a `Y.XmlText` included). Follows edits to the text.
+
+- `keys(): Selector<string[]>`
+
+  The map's keys, sorted so every peer sees the same order. `[]` when the
+  map is missing. Only a key added or deleted counts, not a value replaced.
+  Its own `event` filter does that, so a spec that adds an `event` filter
+  calls it from its own: `{ ...ids, event: (e) => ids.event!(e) && mine(e) }`.
+
+- `toJSON(): Selector<Record<string, unknown>>`
+
+  `toJSON()` of the map and everything under it, `{}` when missing. Observes deeply; compared deeply.
+
+- `readonly locator: Locator<Y.Map<V>>`
+- `project<T>(project: (node: Y.Map<V> | undefined) => T, options?: ProjectOptions<T>): Selector<T>`
+
+  Your own projection of the node, `undefined` when it is missing or of
+  another kind. Observes deeply and compares with `deepEqual` unless
+  `options` say otherwise; `keys` alone observes only those keys.
+
+- `project<T>(projection: Projection<T>): Selector<T>`
+
+  A packaged projection, such as `reader(schema, shape)`, with its own
+  observe options and `equals`. It gets the node as stored, whatever its kind.
+
+
+##### `select`
+
+```ts
+const select: {
+  map: <V = unknown>(name: string) => MapPath<V>;
+  array: <V = unknown>(name: string) => ArrayPath<V>;
+}
+```
+
+Builds selectors: `select.map('cards').child(id).get('title', '')`. Starts
+at a root type of the doc, like `at`.
+
+```ts
+const title = liveAtom(select.map('cards').child('card-1').get('title', ''))
+const ids = liveAtom(select.map('cards').keys())
+const order = liveAtom(select.array<string>('order').toArray())
+```
+
+##### `shallowEqual`
+
+```ts
+const shallowEqual: (a: unknown, b: unknown) => boolean
+```
+
+Whether two values are the same, or objects or arrays whose own keys hold the same values
+(`Object.is`). The default `equals` of a `LiveSpec`.
+
+```ts
+shallowEqual({ done: 1, total: 2 }, { done: 1, total: 2 }) // true
+shallowEqual({ tags: ['a'] }, { tags: ['a'] }) // false: two different arrays
+```
+
+##### `docAtom`
+
+```ts
+const docAtom: PrimitiveAtom<Y.Doc | null> & {    init: Y.Doc | null;}
+```
+
+Holds the live Y.Doc handle that atoms read by default. Set once per store; the doc never
+changes, so this atom never notifies.
+
+```ts
+const store = createStore()
+store.set(docAtom, new Y.Doc())
+```
+
+##### `liveAtom`
+
+```ts
+function liveAtom<N extends Y.AbstractType<any>, T>(
+  spec: LiveSpec<N, T>,
+  options: AtomOptions = {},
+): Atom<T>
+```
+
+A read-only atom over one node of the doc in `docAtom` (or the doc atom given in `options`),
+built on `live` from `duratom/core`. While something is subscribed it observes only the
+located node, re-runs `project` on matching transactions and updates only when `equals` says
+the result changed. Unsubscribes when the last subscriber goes away.
+
+Read while nothing is subscribed (`store.get` outside a component), it can be stale: Jotai
+keeps an unmounted atom's value until one of its atom dependencies changes, and a doc edit
+isn't one. It projects the doc on its first read and again whenever it is mounted, but not
+after later doc edits made while unmounted. Subscribe (`useAtomValue`, `store.sub`) to follow
+the doc; outside Jotai, `live` from `duratom/core` reads the doc as it is now.
+
+A change skipped by the `origin` filter is not remembered: the value catches up at the next
+accepted change.
+
+```ts
+const titleAtom = liveAtom(select.map('cards').child('card-1').get('title', ''))
+```
+
+##### `collection`
+
+```ts
+function collection<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any>,
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  options: AtomOptions = {},
+): Collection<StandardSchemaV1.InferOutput<Schema>>
+```
+
+A collection over the `Y.Map` at `locator`, whose every entry is an item `Y.Map` read through
+`schema` and `shape`. `ids` lists the items and stays quiet while their fields change, `item(id)`
+is a `typedAtom` per item, and `create` and `remove` add and delete items.
+
+Like any duratom atom, `ids` and `item(id)` can read stale while nothing is subscribed, except
+right after the collection's own `create` or `remove`, or a write through `item(id)` that
+created the item. An entry a peer stored as something other than a `Y.Map` is still listed in
+`ids`, so it can be found and repaired; its `item` atom reads it as `{ issues }`, or as
+`undefined` for a plain value.
+
+```ts
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const todos = collection(select.map('todos'), Todo, { title: 'text' })
+
+const { id } = store.set(todos.create, { title: 'Buy milk', done: false }) as { id: string }
+store.get(todos.ids) // [id]
+store.set(todos.item(id), { done: true }) // changes only done
+store.set(todos.remove, id)
+```
+
+##### `typedAtom`
+
+```ts
+function typedAtom<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any>,
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  options: AtomOptions = {},
+): TypedAtom<StandardSchemaV1.InferOutput<Schema>>
+```
+
+A typed, writable atom over the `Y.Map` at `locator`, read through `schema` and `shape`: a
+`liveAtom` over `reader(schema, shape)` with a setter. It observes only that node, skips edits
+inside its `'xml'` fields, and re-renders only when the result changes. Like a `liveAtom`, it
+can read stale while nothing is subscribed, except right after its own setter wrote.
+
+Setting it reads the node as it is in the doc at write time, not the atom's last value, and
+merges the patch into it: fields the patch leaves out, and keys the schema doesn't know, are
+written back unchanged, so `write` changes only the patched fields and a peer's concurrent
+edit to another field survives. A function patch gets that fresh value as `prev`.
+
+Invalid data never throws: the setter returns the schema's result, and `{ issues }` changes
+nothing.
+
+While the node has no valid value, the patch is the whole value and a function patch gets
+`undefined` as `prev`. On a missing node a valid value creates the `Y.Map` in its parent; when
+the parent map is missing too, nothing is created and the result holds one issue saying so. On
+an invalid node a valid value replaces what the schema rejected, keeping keys neither the shape
+nor the value names: that is how a node a peer broke is repaired. A shared type of another kind
+where the map belongs reads as issues, and only writing its parent can replace it.
+
+```ts
+const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
+const cardAtom = typedAtom(select.map('cards').child('card-1'), Card, { title: 'text' })
+
+store.get(cardAtom) // undefined, { issues } or { value }
+store.set(cardAtom, { title: 'Ship it', priority: 'low' }) // creates the card
+store.set(cardAtom, { priority: 'high' }) // changes only priority
+```
+
+#### Types
+
+##### `ArrayKind`
+
+```ts
+interface ArrayKind {
+  readonly kind: 'array'
+}
+```
+
+An `array()` field: a Shared array of plain values.
+
+##### `MapKind`
+
+```ts
+interface MapKind<S> {
+  readonly kind: 'map'
+  readonly shape: S
+}
+```
+
+A `map(shape)` field: a `Y.Map` with the fixed keys `shape` describes.
+
+##### `RecordKind`
+
+```ts
+interface RecordKind<S> {
+  readonly kind: 'record'
+  readonly shape: S
+}
+```
+
+A `record(itemShape)` field: a `Y.Map` of item `Y.Map`s, each following `itemShape`.
+
+##### `Shape`
+
+```ts
+type Shape<T> = {
+  readonly [K in KeyOf<T>]?: KindOf<FieldOf<T, K>>
+}
+```
+
+Which fields of a node are Shared fields, and of what kind. Every key it doesn't mention is a
+Plain field. Keys are constrained to the fields of `T`, the schema's output, in any member of a
+union, and each kind to fields its read value can fill.
+
+##### `At`
+
+```ts
+type At = typeof at
+```
+
+The type of `at`, which a `LiveSpec`'s `locate` gets.
+
+##### `ObserveOptions`
+
+```ts
+interface ObserveOptions {
+  /** Use `observeDeep` on the located node, so changes in nested types count. */
+  deep?: boolean
+  /**
+   * Only count Y.Map changes to these keys. In deep mode, changes to the located
+   * node itself (children added or removed) always count.
+   */
+  keys?: readonly string[]
+  /** Return false to ignore a transaction by its origin. */
+  origin?: (origin: unknown) => boolean
+  /**
+   * Return false to ignore a change by its event. It decides whether a
+   * transaction counts, not what is seen: in deep mode it is called with the
+   * transaction's events under the node until one is accepted, so it may not
+   * see them all. It runs while the observer runs, so `event.changes` and
+   * `event.path` (relative to the located node) can be read.
+   */
+  event?: (event: Y.YEvent<any>) => boolean
+}
+```
+
+Which changes to the located node count, for `observeLocated`, `live` and every atom.
+
+##### `Projection`
+
+```ts
+interface Projection<T> extends ProjectOptions<T> {
+  project: (node: Y.AbstractType<any> | undefined) => T
+}
+```
+
+A projection packaged with how to observe and compare it, such as
+`reader(schema, shape)` from `@y-modern/schema`. Hand it to `project`, or
+spread it into a spec beside `locate`. It takes the node as stored, of any
+shared type, so it can report one of another kind than its path says, as
+`reader` does, rather than see it as missing.
+
+##### `ProjectOptions`
+
+```ts
+interface ProjectOptions<T> {
+  /** Default: `deepEqual`, since a custom projection usually builds a fresh value. */
+  equals?: (a: T, b: T) => boolean
+  /** Default: true without `keys`, so a change anywhere under the node counts; false with `keys`. */
+  deep?: boolean
+  keys?: readonly string[]
+  /** Return false to ignore a change by its event, as `ObserveOptions#event` says. */
+  event?: (event: Y.YEvent<any>) => boolean
+}
+```
+
+Options of `project`: how to observe the node and compare projections.
+
+##### `Selector`
+
+```ts
+type Selector<T> = LiveSpec<any, T>
+```
+
+A ready `LiveSpec`: path, observed keys, projection and equality in one
+plain object. Pass it to `live` or a binding's `liveAtom` as it is, or
+spread it to add an option (`{ ...selector, origin }`).
+
+##### `AtomOptions`
+
+```ts
+interface AtomOptions {
+  /**
+   * The atom holding the doc this atom reads, for apps with several docs. Defaults to
+   * `docAtom`.
+   *
+   * @example
+   * const boardDocAtom = atom<Y.Doc | null>(null)
+   * const title = liveAtom(select.map('meta').get('title', ''), { docAtom: boardDocAtom })
+   */
+  docAtom?: Atom<Y.Doc | null | undefined>
+}
+```
+
+Options every duratom atom takes.
+
+##### `LiveSpec`
+
+```ts
+interface LiveSpec<N extends Y.AbstractType<any>, T> extends ObserveOptions {
+  locate: (at: At) => Locator<N>
+  /** Plain snapshot. `undefined` when the located node does not exist. */
+  project: (node: N | undefined) => T
+  /** Whether two projections are the same; an equal result keeps the old reference and does not notify. Default: shallow. */
+  equals?: (a: T, b: T) => boolean
+}
+```
+
+What `live` and `liveAtom` read: where the node is, how to turn it into a value, and when the
+value counts as changed. `select` builds one; write your own for anything it can't express.
+
+##### `Collection`
+
+```ts
+interface Collection<T> {
+  /**
+   * The ids of every entry of the map, sorted so every peer sees the same order; `[]` while the
+   * map is missing. Notifies only when an id is added or removed, never when an item's fields
+   * change.
+   */
+  readonly ids: Atom<string[]>
+  /**
+   * The typed atom of the item under `id`, the same atom for the same id: it reads `undefined`,
+   * `{ issues }` or `{ value }` and merges a patch when set, as `typedAtom` does; setting a
+   * missing item creates it. The collection's `remove` drops the item's atom from the family, and
+   * `item.remove(id)` or `item.setShouldRemove` can drop others; an atom a caller still holds keeps
+   * working after it's dropped.
+   */
+  readonly item: AtomFamily<string, TypedAtom<T>>
+  /**
+   * Validates a whole value and adds it as a new item under `id`, or under a random UUID when no
+   * id is given. Returns the schema's result with the id. An invalid value, an id already in use,
+   * or a missing map adds nothing and returns `{ issues }`: the value's own issues when it has
+   * any, else one saying why it couldn't be added.
+   */
+  readonly create: WritableAtom<null, [value: T, id?: string], CreateResult<T>>
+  /** Removes the item under `id`. Returns whether there was one. */
+  readonly remove: WritableAtom<null, [id: string], boolean>
+}
+```
+
+Atoms over a `Y.Map` of items, each item a `Y.Map` read through one schema. Write with
+`store.set` or `useSetAtom`, like any Jotai atom.
+
+##### `CreateResult`
+
+```ts
+type CreateResult<T> =
+  | (StandardSchemaV1.SuccessResult<T> & { readonly id: string })
+  | StandardSchemaV1.FailureResult
+```
+
+What a collection's `create` returns: the schema's result, with the new item's id when valid.
+
+##### `Patch`
+
+```ts
+type Patch<T> = Partial<T> | ((prev: T | undefined) => Partial<T>)
+```
+
+What a typed atom's setter takes: a patch of the fields to change, or a function of the node's
+value as it is in the doc at write time (`undefined` while it has no valid value) returning one.
+
+##### `TypedAtom`
+
+```ts
+type TypedAtom<T> = WritableAtom<
+  StandardSchemaV1.Result<T> | undefined,
+  [patch: Patch<T>],
+  StandardSchemaV1.Result<T>
+>
+```
+
+A Jotai atom over one `Y.Map` of the doc, read through a schema. It reads as `undefined` while
+the node is missing, `{ issues }` while it doesn't satisfy the schema, and `{ value }`
+otherwise. Setting it merges a patch and returns the schema's result.
+
+### `duratom/react`
+
+#### Functions and values
+
+##### `useLiveAtom`
+
+```ts
+function useLiveAtom<N extends Y.AbstractType<any>, T>(
+  spec: LiveSpec<N, T> | (() => LiveSpec<N, T>),
+  deps: DependencyList,
+  options?: AtomOptions,
+): T
+function useLiveAtom<N extends Y.AbstractType<any>, T>(
+  locate: LiveSpec<N, T>['locate'],
+  project: LiveSpec<N, T>['project'],
+  options?: SpecOptions<N, T>,
+  deps?: DependencyList,
+): T
+```
+
+Hook form of `liveAtom`, taking a whole spec, such as a selector from `select`, or a function
+that builds it: `useLiveAtom(() => select..., [id])` builds it only when `deps` change, rather
+than on every render. The atom is rebuilt only when `deps` change, so list whatever the spec
+closes over (an id, say), as with useMemo. `deps` is required: a spec built inline from props
+would otherwise keep its first value. `options.docAtom` reads another doc than `docAtom`.
+
+Hook form of `liveAtom`. The atom is rebuilt only when `deps` change, so list whatever
+`locate` and `project` close over (an id, say), as with useMemo. `options.docAtom` reads
+another doc than `docAtom`.
+
+```ts
+const title = useLiveAtom(() => select.map('cards').child(id).get('title', ''), [id])
+```
+
+```ts
+const title = useLiveAtom(
+  (at) => at.map('cards').child(id),
+  (card: Y.Map<unknown> | undefined) => String(card?.get('title') ?? ''),
+  { keys: ['title'] },
+  [id],
+)
+```
+
+##### `useTypedAtom`
+
+```ts
+function useTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
+  locator: Locator<any> | MapPath<any> | (() => Locator<any> | MapPath<any>),
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  deps: DependencyList,
+  options?: AtomOptions,
+): [
+  result: StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>> | undefined,
+  set: (
+    patch: Patch<StandardSchemaV1.InferOutput<Schema>>,
+  ) => StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>>,
+]
+```
+
+Hook form of `typedAtom`, returning `[result, set]` as `useAtom` does: `result` is `undefined`
+while the node is missing, `{ issues }` while it's invalid and `{ value }` otherwise, and
+`set(patch)` merges a patch and returns the schema's result. `locator` can be a function that
+builds it, so it's built only when `deps` change. The atom is rebuilt only when `deps` change,
+so list whatever the locator closes over (an id, say), as with useMemo; `schema` and `shape`
+are taken from the render that built it. `options.docAtom` reads another doc than `docAtom`.
+
+```ts
+const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
+const [card, setCard] = useTypedAtom(() => select.map('cards').child(id), Card, { title: 'text' }, [id])
+if (card && !card.issues) setCard({ priority: 'high' })
+```
+
+### `duratom/core`
+
+Also exports `deepEqual`, `shallowEqual`, `LiveSpec`, `at`, `Locator`, `At`, `ObserveOptions`, `ArrayPath`, `MapPath`, `select`, `Projection`, `ProjectOptions`, `Selector`, documented under `duratom`.
+
+#### Functions and values
+
+##### `live`
+
+```ts
+function live<N extends Y.AbstractType<any>, T>(
+  doc: Y.Doc,
+  spec: LiveSpec<N, T>,
+): Live<T, N>
+```
+
+A live projection of one node of `doc`. While anything is subscribed it
+observes only the located node (see `observeLocated`), re-runs `project` on
+matching transactions and notifies only when `equals` says the result
+changed. With no subscribers nothing is observed and `get` projects the
+current doc on each call.
+
+A change skipped by the `origin` filter is not remembered while subscribed:
+the value catches up at the next accepted change. With no subscribers there
+is nothing to filter, so `get` shows every change made so far.
+
+```ts
+const title = live(doc, select.map('cards').child('card-1').get('title', ''))
+const stop = title.subscribe((value, prev) => console.log(prev, '->', value))
+title.get() // the title now
+stop()
+```
+
+##### `observeLocated`
+
+```ts
+function observeLocated(
+  doc: Y.Doc,
+  locator: Locator,
+  options: ObserveOptions,
+  onChange: () => void,
+): () => void
+```
+
+Calls `onChange` after a transaction that may have changed what the locator
+points at. Watches the located node (and nothing else in the doc) plus, for
+each step of the path, that one key of the parent map. Returns an unsubscribe.
+
+```ts
+const stop = observeLocated(doc, at.map('cards').child('card-1'), { deep: true }, () =>
+  console.log('card-1 changed, or was created or deleted'),
+)
+stop()
+```
+
+##### `AsyncValidationUnsupportedError`
+
+```ts
+class AsyncValidationUnsupportedError
+```
+
+Thrown by `read` and `write` when the schema's `~standard.validate` returns a Promise. The layer
+validates synchronously only, so an async schema is a configuration error, not bad data.
+
+```ts
+const Slow = z.object({ title: z.string() }).refine(async () => true)
+try {
+  store.set(typedAtom(select.map('cards').child('c1'), Slow, {}), { title: 'Hi' })
+} catch (error) {
+  if (error instanceof AsyncValidationUnsupportedError) console.error(error.vendor) // 'zod'
+}
+```
+
+- `constructor(vendor: string)`
+- `readonly vendor: string`
+- `name: string`
+- `message: string`
+- `stack?: string`
+- `cause?: unknown`
+
+##### `create`
+
+```ts
+function create<Schema extends StandardSchemaV1, const S extends object>(
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  parent: Y.Map<unknown>,
+  key: string,
+  value: StandardSchemaV1.InferOutput<Schema>,
+): StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>>
+```
+
+Validates `value` with `schema` and, if it's valid, stores it as a new `Y.Map` under `key` of
+`parent`, replacing whatever was stored there. Returns the schema's own result; an invalid
+value creates nothing, and a value the shape can't store throws before anything is created.
+
+```ts
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+create(Todo, { title: 'text' }, doc.getMap('todos'), 'todo-1', { title: 'Buy milk', done: false })
+```
+
+##### `read`
+
+```ts
+function read<Schema extends StandardSchemaV1, const S extends object>(
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  node: Y.AbstractType<any> | undefined,
+): StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>> | undefined
+```
+
+Projects a located `Y.Map` following `shape` and validates it with `schema`, returning the
+schema's own result. An absent node returns `undefined` without validating, and a node with a
+shape mismatch, or a shared type that isn't a `Y.Map`, returns the layer's own issues without
+validating.
+
+```ts
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const result = read(Todo, { title: 'text' }, doc.getMap('todos').get(id) as Y.Map<unknown>)
+if (result?.issues) console.warn(result.issues)
+else if (result) console.log(result.value.title)
+```
+
+##### `reader`
+
+```ts
+function reader<Schema extends StandardSchemaV1, const S extends object>(
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+): Reader<StandardSchemaV1.InferOutput<Schema>>
+```
+
+`read(schema, shape, node)` as a `Reader`, for `select...project(reader(schema, shape))`.
+`typedAtom` reads through it; use it for a read-only typed value outside Jotai.
+
+```ts
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const todo = live(doc, select.map('todos').child(id).project(reader(Todo, { title: 'text' })))
+todo.subscribe((result) => console.log(result?.issues ?? result?.value))
+```
+
+##### `UnsupportedValueError`
+
+```ts
+class UnsupportedValueError
+```
+
+Thrown by `write` when a plain field or `array()` item holds a value Yjs can't store faithfully: anything but
+JSON values, `undefined` and `Uint8Array` bytes, a cycle, a `__proto__` key, or a `constructor`
+key on the field's own object. The schema accepted it, so it's a schema that's too loose, not bad
+data. Nothing is written.
+
+```ts
+const Event = z.object({ at: z.date() }) // a Date syncs as {}, so it can't be stored
+try {
+  store.set(typedAtom(select.map('events').child('e1'), Event, {}), { at: new Date() })
+} catch (error) {
+  if (error instanceof UnsupportedValueError) console.error(error.path) // ['at']
+}
+```
+
+- `constructor(path: readonly PropertyKey[])`
+- `readonly path: readonly PropertyKey[]`
+
+  Where the value sits in the written value, starting at the field's key.
+
+- `name: string`
+- `message: string`
+- `stack?: string`
+- `cause?: unknown`
+
+##### `write`
+
+```ts
+function write<Schema extends StandardSchemaV1, const S extends object>(
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  node: Y.Map<unknown>,
+  value: StandardSchemaV1.InferOutput<Schema>,
+): StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>>
+```
+
+Validates `value` with `schema` and, if it's valid, merges it into the located `Y.Map` so only
+the differences change. Returns the schema's own result; an invalid value changes nothing.
+Fields the value lacks are deleted, so pass the whole value; a typed atom merges a patch first.
+
+```ts
+const Todo = z.object({ title: z.string(), done: z.boolean() })
+const node = doc.getMap('todos').get(id) as Y.Map<unknown>
+const result = write(Todo, { title: 'text' }, node, { title: 'Ship it', done: true })
+if (result.issues) console.warn(result.issues) // the doc is unchanged
+```
+
+#### Types
+
+##### `Live`
+
+```ts
+interface Live<T, N extends Y.AbstractType<any> = Y.AbstractType<any>> {
+  /** The current projection. Keeps the same reference until `equals` says it changed. */
+  get(): T
+  /**
+   * Calls `listener(value, prev)` after a change, with the new and the previous
+   * projection. The first subscriber starts observing, the last one to leave stops.
+   */
+  subscribe(listener: (value: T, prev: T) => void): () => void
+  /** The located node as it is now, `undefined` when it does not exist. */
+  resolve(): N | undefined
+  /**
+   * Runs `fn` in one transaction of the doc with the located node as it is
+   * now, `undefined` when it does not exist, and returns what `fn` returns.
+   * The change comes back through `subscribe` like any other, so a write whose
+   * origin the `origin` filter rejects leaves `get()` behind the doc until the
+   * next accepted change.
+   */
+  write<R>(fn: (node: N | undefined, doc: Y.Doc) => R, origin?: unknown): R
+}
+```
+
+A read-only value over one node of a doc, in the shape `useSyncExternalStore` takes.
+
+##### `Reader`
+
+```ts
+interface Reader<T> {
+  project: (node: Y.AbstractType<any> | undefined) => StandardSchemaV1.Result<T> | undefined
+  deep: true
+  event: (event: Y.YEvent<any>) => boolean
+  equals: (
+    a: StandardSchemaV1.Result<T> | undefined,
+    b: StandardSchemaV1.Result<T> | undefined,
+  ) => boolean
+}
+```
+
+`read` packaged as a store binding's projection: `project` reads a located node through
+`schema` and `shape`, `deep` observes every change under it, `event` skips edits inside an
+`'xml'` field, which a read returns as the fragment itself, and `equals` compares two results
+deeply, since each read returns a fresh tree. It has the shape `project` of a
+`select` selector and a `liveAtom` spec take, so the schema layer and the observation core
+stay independent of each other.

@@ -85,8 +85,9 @@ export function useLiveAtom<N extends Y.AbstractType<any>, T>(
  * are taken from the render that built it. `options.docAtom` reads another doc than `docAtom`.
  *
  * @example
+ * const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
  * const [card, setCard] = useTypedAtom(() => select.map('cards').child(id), Card, { title: 'text' }, [id])
- * if (card?.value) setCard({ priority: 'high' })
+ * if (card && !card.issues) setCard({ priority: 'high' })
  */
 export function useTypedAtom<Schema extends StandardSchemaV1, const S extends object>(
   locator: Locator<any> | MapPath<any> | (() => Locator<any> | MapPath<any>),

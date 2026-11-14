@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { isMap, type Locator } from './locator.js'
 
+/** Which changes to the located node count, for `observeLocated`, `live` and every atom. */
 export interface ObserveOptions {
   /** Use `observeDeep` on the located node, so changes in nested types count. */
   deep?: boolean
@@ -25,6 +26,12 @@ export interface ObserveOptions {
  * Calls `onChange` after a transaction that may have changed what the locator
  * points at. Watches the located node (and nothing else in the doc) plus, for
  * each step of the path, that one key of the parent map. Returns an unsubscribe.
+ *
+ * @example
+ * const stop = observeLocated(doc, at.map('cards').child('card-1'), { deep: true }, () =>
+ *   console.log('card-1 changed, or was created or deleted'),
+ * )
+ * stop()
  */
 export function observeLocated(
   doc: Y.Doc,

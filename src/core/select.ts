@@ -157,7 +157,15 @@ export abstract class Path<N extends Y.AbstractType<any>> {
   }
 }
 
-/** A path to a `Y.Map`. Descend with `child`, or end with a projection to get a `Selector`. */
+/**
+ * A path to a `Y.Map`. Descend with `child`, or end with a projection to get a `Selector`.
+ * `select.map(name)` starts one; `typedAtom` and `collection` take one as their locator.
+ *
+ * @example
+ * const card = select.map('cards').child('card-1')
+ * const title = liveAtom(card.text('title'))
+ * const flags = liveAtom(card.pick({ done: false, starred: false }))
+ */
 export class MapPath<V = unknown> extends Path<Y.Map<V>> {
   protected is(node: unknown): node is Y.Map<V> {
     return isMap(node)
@@ -239,7 +247,13 @@ export class MapPath<V = unknown> extends Path<Y.Map<V>> {
   }
 }
 
-/** A path to a `Y.Array`. End it with a projection to get a `Selector`. */
+/**
+ * A path to a `Y.Array`. End it with a projection to get a `Selector`.
+ *
+ * @example
+ * const log = select.map('board').child('log', 'array')
+ * const entries = liveAtom(log.length())
+ */
 export class ArrayPath<V = unknown> extends Path<Y.Array<V>> {
   protected is(node: unknown): node is Y.Array<V> {
     return node instanceof Y.Array
@@ -264,6 +278,11 @@ export class ArrayPath<V = unknown> extends Path<Y.Array<V>> {
 /**
  * Builds selectors: `select.map('cards').child(id).get('title', '')`. Starts
  * at a root type of the doc, like `at`.
+ *
+ * @example
+ * const title = liveAtom(select.map('cards').child('card-1').get('title', ''))
+ * const ids = liveAtom(select.map('cards').keys())
+ * const order = liveAtom(select.array<string>('order').toArray())
  */
 export const select = {
   map: <V = unknown>(name: string) => new MapPath<V>(at.map<V>(name)),

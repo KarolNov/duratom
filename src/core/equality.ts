@@ -1,3 +1,11 @@
+/**
+ * Whether two values are the same, or objects or arrays whose own keys hold the same values
+ * (`Object.is`). The default `equals` of a `LiveSpec`.
+ *
+ * @example
+ * shallowEqual({ done: 1, total: 2 }, { done: 1, total: 2 }) // true
+ * shallowEqual({ tags: ['a'] }, { tags: ['a'] }) // false: two different arrays
+ */
 export const shallowEqual = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) return true
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
@@ -20,6 +28,10 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
 /**
  * Compares arrays and plain objects all the way down, and bytes byte by byte.
  * Any other object (a `Map`, a `Set`, a `Date`, a shared type) equals only itself.
+ *
+ * @example
+ * deepEqual({ tags: ['a'] }, { tags: ['a'] }) // true
+ * const tags = liveAtom({ ...select.map('card').get('tags', []), equals: deepEqual })
  */
 export const deepEqual = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) return true

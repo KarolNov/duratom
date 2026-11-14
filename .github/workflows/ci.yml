@@ -23,7 +23,10 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      # Fails when a generated doc is stale, or a doc snippet or TSDoc example no longer compiles.
+      - run: pnpm docs:check
       - run: pnpm build
+      - run: pnpm site:build
       # The example imports the built package, so it is checked after the build.
       - run: pnpm --filter duratom-example-todo typecheck
       - run: pnpm --filter duratom-example-todo build
