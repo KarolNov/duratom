@@ -31,17 +31,36 @@ export type AnyShape = { readonly [key: string]: Kind | undefined }
 
 export type Kind = 'text' | 'xml' | MapKind<AnyShape> | RecordKind<AnyShape> | ArrayKind
 
-/** A nested `Y.Map` with the fixed keys `shape` describes, read as a plain object. */
+/**
+ * A nested `Y.Map` with the fixed keys `shape` describes, read as a plain object.
+ *
+ * @example
+ * const Card = z.object({ title: z.string(), meta: z.object({ note: z.string() }) })
+ * const card = typedAtom(select.map('cards').child('card-1'), Card, { meta: map({ note: 'text' }) })
+ */
 export const map = <const S extends AnyShape>(shape: S): MapKind<S> =>
   Object.freeze({ kind: 'map', shape })
 
-/** A `Y.Map` with dynamic keys whose every value is a `Y.Map` following `itemShape`. */
+/**
+ * A `Y.Map` with dynamic keys whose every value is a `Y.Map` following `itemShape`.
+ *
+ * @example
+ * const Board = z.object({ cards: z.record(z.string(), z.object({ title: z.string() })) })
+ * const board = typedAtom(select.map('boards').child('b1'), Board, { cards: record({ title: 'text' }) })
+ */
 export const record = <const S extends AnyShape>(itemShape: S): RecordKind<S> =>
   Object.freeze({ kind: 'record', shape: itemShape })
 
 const arrayKind: ArrayKind = Object.freeze({ kind: 'array' })
 
-/** A `Y.Array` of plain values, read as a plain array. */
+/**
+ * A `Y.Array` of plain values, read as a plain array. Writing it changes only the items that
+ * differ, so items peers add at once are all kept.
+ *
+ * @example
+ * const Card = z.object({ tags: z.array(z.string()) })
+ * const card = typedAtom(select.map('cards').child('card-1'), Card, { tags: array() })
+ */
 export const array = (): ArrayKind => arrayKind
 
 /** The kinds a field of type `F` can be declared as. */
@@ -115,12 +134,20 @@ export const isText = (stored: unknown): stored is Y.Text =>
   stored instanceof Y.Text && !(stored instanceof Y.XmlText)
 
 /**
- * The shared type a `map`, `record` and `'xml'` kind is stored as. The Y.Xml types extend the
- * others but are decoded as their own types, so they match no kind but `'xml'`, which takes a
- * `Y.XmlFragment` only. `isText` does the same for `'text'`.
+ * Whether `value` is a `Y.Map` that duratom reads as one: a `Y.XmlHook` extends `Y.Map`, but peers
+ * decode it as its own type, so it isn't.
+ *
+ * @example
+ * const stored = doc.getMap('todos').get(id)
+ * if (isMap(stored)) console.log(stored.get('title'))
  */
 export const isMap = (value: unknown): value is Y.Map<unknown> =>
   value instanceof Y.Map && !(value instanceof Y.XmlHook)
+/**
+ * Whether a stored value is the `Y.XmlFragment` an `'xml'` field holds. As with `isMap` for the
+ * `map` and `record` kinds, the Y.Xml types that extend it are decoded as their own types, so an
+ * `'xml'` field takes a `Y.XmlFragment` only. `isText` does the same for `'text'`.
+ */
 export const isXml = (value: unknown): value is Y.XmlFragment =>
   value instanceof Y.XmlFragment && !(value instanceof Y.XmlElement)
 

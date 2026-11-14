@@ -3,6 +3,10 @@ import { shallowEqual } from './equality.js'
 import { at, type At, type Locator } from './locator.js'
 import { observeLocated, type ObserveOptions } from './observe.js'
 
+/**
+ * What `live` and `liveAtom` read: where the node is, how to turn it into a value, and when the
+ * value counts as changed. `select` builds one; write your own for anything it can't express.
+ */
 export interface LiveSpec<N extends Y.AbstractType<any>, T> extends ObserveOptions {
   locate: (at: At) => Locator<N>
   /** Plain snapshot. `undefined` when the located node does not exist. */
@@ -42,6 +46,12 @@ export interface Live<T, N extends Y.AbstractType<any> = Y.AbstractType<any>> {
  * A change skipped by the `origin` filter is not remembered while subscribed:
  * the value catches up at the next accepted change. With no subscribers there
  * is nothing to filter, so `get` shows every change made so far.
+ *
+ * @example
+ * const title = live(doc, select.map('cards').child('card-1').get('title', ''))
+ * const stop = title.subscribe((value, prev) => console.log(prev, '->', value))
+ * title.get() // the title now
+ * stop()
  */
 export function live<N extends Y.AbstractType<any>, T>(
   doc: Y.Doc,

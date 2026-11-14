@@ -9,6 +9,13 @@ import { validate } from './validate.js'
 /**
  * Validates `value` with `schema` and, if it's valid, merges it into the located `Y.Map` so only
  * the differences change. Returns the schema's own result; an invalid value changes nothing.
+ * Fields the value lacks are deleted, so pass the whole value; a typed atom merges a patch first.
+ *
+ * @example
+ * const Todo = z.object({ title: z.string(), done: z.boolean() })
+ * const node = doc.getMap('todos').get(id) as Y.Map<unknown>
+ * const result = write(Todo, { title: 'text' }, node, { title: 'Ship it', done: true })
+ * if (result.issues) console.warn(result.issues) // the doc is unchanged
  */
 export function write<Schema extends StandardSchemaV1, const S extends object>(
   schema: Schema,
@@ -34,6 +41,10 @@ export function write<Schema extends StandardSchemaV1, const S extends object>(
  * Validates `value` with `schema` and, if it's valid, stores it as a new `Y.Map` under `key` of
  * `parent`, replacing whatever was stored there. Returns the schema's own result; an invalid
  * value creates nothing, and a value the shape can't store throws before anything is created.
+ *
+ * @example
+ * const Todo = z.object({ title: z.string(), done: z.boolean() })
+ * create(Todo, { title: 'text' }, doc.getMap('todos'), 'todo-1', { title: 'Buy milk', done: false })
  */
 export function create<Schema extends StandardSchemaV1, const S extends object>(
   schema: Schema,
