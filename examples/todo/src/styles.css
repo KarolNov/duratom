@@ -1,0 +1,371 @@
+:root {
+  --bg: #f7f7f5;
+  --pane: #ffffff;
+  --text: #1c1c1a;
+  --muted: #6b6b66;
+  --border: #e2e2dd;
+  --accent: #2f6fde;
+  --danger: #c2352b;
+  --ok: #1f8a4c;
+  --tip-bg: #1c1c1a;
+  --tip-text: #f7f7f5;
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --pane: #1f1f1d;
+    --text: #ececea;
+    --muted: #9a9a94;
+    --border: #33332f;
+    --accent: #6c9cf0;
+    --danger: #ef6b60;
+    --ok: #4cc17c;
+    --tip-bg: #ececea;
+    --tip-text: #1c1c1a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+header p {
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--pane);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+header h1,
+header p {
+  width: 100%;
+  margin: 0;
+}
+
+.latency,
+.scan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.latency input {
+  width: 160px;
+  accent-color: var(--accent);
+}
+
+.latency output {
+  min-width: 4ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.link.on {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.link.off {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.pane {
+  background: var(--pane);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 12px;
+}
+
+.progress,
+.empty {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+form input {
+  flex: 1;
+  min-width: 0;
+}
+
+input:not([type]) {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+li .title {
+  flex: 1;
+  min-width: 0;
+  border-color: transparent;
+}
+
+li .title:focus {
+  border-color: var(--border);
+}
+
+/* The checkbox, not the row, knows whether the todo is done, so the row never re-renders for it. */
+li:has(input[type='checkbox']:checked) .title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.title.invalid,
+.title.invalid:focus {
+  border-color: var(--danger);
+}
+
+.error {
+  width: 100%;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.broken {
+  color: var(--danger);
+}
+
+.broken .issue {
+  flex: 1;
+  min-width: 0;
+}
+
+.icon {
+  padding: 4px 6px;
+  line-height: 1;
+}
+
+.how {
+  margin-top: 24px;
+  color: var(--muted);
+  max-width: 75ch;
+}
+
+.how h2 {
+  color: var(--text);
+  font-size: 1.1rem;
+}
+
+.how code {
+  font-size: 0.85em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Wide tables scroll inside their box rather than widening the page on a phone. */
+.how .table {
+  overflow-x: auto;
+}
+
+.how table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.how th,
+.how td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.how th,
+.how td:first-child {
+  color: var(--text);
+}
+
+.try {
+  width: 100%;
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+  color: var(--muted);
+  max-width: 75ch;
+  font-size: 0.95rem;
+}
+
+.try li {
+  display: list-item;
+  padding: 2px 0;
+}
+
+.try strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Tooltips: a bubble above the control, shown after a short hover, on keyboard focus, or while
+   open. It never takes pointer events, so it can't block what's under it. */
+.tip {
+  position: relative;
+  display: inline-flex;
+}
+
+.tip-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.tip-grow > input {
+  width: 100%;
+}
+
+.tip-bubble {
+  --tip-color: var(--tip-bg);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 10;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--tip-color);
+  color: var(--tip-text);
+  font-size: 0.8rem;
+  font-weight: normal;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 4px;
+  transition:
+    opacity 120ms ease,
+    translate 120ms ease;
+}
+
+/* The arrow, pointing at the control. */
+.tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0;
+  border: 5px solid transparent;
+  border-top-color: var(--tip-color);
+}
+
+.tip-end .tip-bubble {
+  left: auto;
+  right: 0;
+  translate: 0 4px;
+}
+
+.tip-end .tip-bubble::after {
+  left: auto;
+  right: 10px;
+  translate: 0 0;
+}
+
+.tip-bubble code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+
+.tip-danger .tip-bubble {
+  --tip-color: var(--danger);
+  color: #fff;
+}
+
+.tip:hover .tip-bubble,
+.tip:has(:focus-visible) .tip-bubble,
+.tip[data-open] .tip-bubble {
+  opacity: 1;
+  translate: -50% 0;
+}
+
+.tip-end:hover .tip-bubble,
+.tip-end:has(:focus-visible) .tip-bubble,
+.tip-end[data-open] .tip-bubble {
+  translate: 0 0;
+}
+
+/* Hover waits a moment, so passing the pointer over a control doesn't flash its tip. */
+.tip:hover:not([data-open]) .tip-bubble {
+  transition-delay: 350ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tip-bubble {
+    transition: none;
+  }
+}

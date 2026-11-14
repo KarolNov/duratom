@@ -24,3 +24,6 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # The example imports the built package, so it is checked after the build.
+      - run: pnpm --filter duratom-example-todo typecheck
+      - run: pnpm --filter duratom-example-todo build
