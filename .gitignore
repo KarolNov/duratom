@@ -7,3 +7,5 @@ docs/tsdoc-examples
 docs/.vitepress/dist
 docs/.vitepress/cache
 .wrangler
+test-results
+playwright-report

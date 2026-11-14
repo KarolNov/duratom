@@ -1,0 +1,161 @@
+:root {
+  --bg: #f7f7f5;
+  --pane: #ffffff;
+  --text: #1c1c1a;
+  --muted: #6b6b66;
+  --border: #e2e2dd;
+  --accent: #2f6fde;
+  --danger: #c2352b;
+  --ok: #1f8a4c;
+  --warn: #b7791f;
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --pane: #1f1f1d;
+    --text: #ececea;
+    --muted: #9a9a94;
+    --border: #33332f;
+    --accent: #6c9cf0;
+    --danger: #ef6b60;
+    --ok: #4cc17c;
+    --warn: #e0a646;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+header p {
+  color: var(--muted);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--pane);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.status {
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.875rem;
+  border: 1px solid currentColor;
+}
+.status.synced {
+  color: var(--ok);
+}
+.status.connecting,
+.status.connected {
+  color: var(--warn);
+}
+.status.offline {
+  color: var(--danger);
+}
+
+.pane {
+  margin-top: 24px;
+  background: var(--pane);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.pane h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.progress {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+form input,
+.title {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: transparent;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.title {
+  border-color: transparent;
+}
+.title:focus {
+  border-color: var(--border);
+}
+
+.empty {
+  color: var(--muted);
+}
+
+.error,
+.broken {
+  color: var(--danger);
+}
+.error {
+  flex-basis: 100%;
+  margin: 0;
+}
