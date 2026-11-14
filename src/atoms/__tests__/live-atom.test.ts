@@ -221,3 +221,17 @@ describe('equality helpers', () => {
     expect(deepEqual([1, 2], [1, 3])).toBe(false)
   })
 })
+
+describe('reading while unmounted', () => {
+  // Documented limitation: Jotai keeps an unmounted atom's value, and a doc edit isn't an atom change.
+  it('keeps the value from its first read until mounted', () => {
+    const { store, doc } = setup()
+    const title = liveAtom(select.map('meta').get('title', ''))
+    expect(store.get(title)).toBe('')
+    doc.getMap('meta').set('title', 'edited')
+    expect(store.get(title)).toBe('')
+    const stop = watch(store, title)
+    expect(store.get(title)).toBe('edited')
+    stop()
+  })
+})

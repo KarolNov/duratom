@@ -27,13 +27,45 @@ export function write<Schema extends StandardSchemaV1, const S extends object>(
   const doc = node.doc
   // Yjs hides the keys of a Y.Map until it's in a doc, so there'd be nothing to merge into.
   if (!doc) throw new TypeError('write needs a Y.Map that is in a Y.Doc.')
+  return apply(schema, shape as AnyShape, doc, new Target(node), value)
+}
+
+/**
+ * Validates `value` with `schema` and, if it's valid, stores it as a new `Y.Map` under `key` of
+ * `parent`, replacing whatever was stored there. Returns the schema's own result; an invalid
+ * value creates nothing, and a value the shape can't store throws before anything is created.
+ */
+export function create<Schema extends StandardSchemaV1, const S extends object>(
+  schema: Schema,
+  shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  parent: Y.Map<unknown>,
+  key: string,
+  value: StandardSchemaV1.InferOutput<Schema>,
+): StandardSchemaV1.Result<StandardSchemaV1.InferOutput<Schema>> {
+  if (!isMap(parent)) throw new TypeError('create needs a Y.Map to create the node in.')
+  const doc = parent.doc
+  if (!doc) throw new TypeError('create needs a Y.Map that is in a Y.Doc.')
+  const root = new Target(undefined, new Target(parent), key)
+  return apply(schema, shape as AnyShape, doc, root, value)
+}
+
+/** Validates `value`, then merges it into `root` in one transaction, creating `root` if missing. */
+function apply<T>(
+  schema: StandardSchemaV1<unknown, T>,
+  shape: AnyShape,
+  doc: Y.Doc,
+  root: Target,
+  value: unknown,
+): StandardSchemaV1.Result<T> {
   const result = validate(schema, value)
   if (result.issues) return result
   if (!isPlainObject(value))
     throw new TypeError('write needs a field object as its value, since a Y.Map holds fields.')
   // Every change is planned, and every value checked, before anything is written.
-  const changes = plan(shape, new Target(node), value)
+  const changes = plan(shape, root, value)
   doc.transact(() => {
+    // A node being created exists even when all its fields are empty.
+    root.ensure()
     for (const change of changes) change()
   })
   return result

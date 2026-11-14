@@ -5,6 +5,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import {
   array,
   AsyncValidationUnsupportedError,
+  create,
   map,
   read,
   record,
@@ -1301,5 +1302,72 @@ describe('a write over a Shape mismatch', () => {
     write(Card, shape, a, value)
     syncDocs(a.doc!, b.doc!)
     expect(read(Card, shape, b)).toEqual({ value })
+  })
+})
+
+describe('create', () => {
+  const parentMap = () => new Y.Doc().getMap<unknown>('cards')
+
+  it('stores a valid value as a new Y.Map in one transaction', () => {
+    const parent = parentMap()
+    const value = { title: 'hi', done: false, meta: { n: 1 } }
+    let transactions = 0
+    parent.doc!.on('afterTransaction', () => transactions++)
+    expect(create(Card, { title: 'text' }, parent, 'c1', value)).toEqual({ value })
+    expect(transactions).toBe(1)
+    const node = parent.get('c1') as Y.Map<unknown>
+    expect(node).toBeInstanceOf(Y.Map)
+    expect(node.get('title')).toBeInstanceOf(Y.Text)
+    expect(node.toJSON()).toEqual(value)
+    expect(read(Card, { title: 'text' }, node)).toEqual({ value })
+  })
+
+  it('creates the node even when all its fields are empty', () => {
+    const parent = parentMap()
+    const Empty = z.object({ title: z.string(), tags: z.array(z.string()) })
+    create(Empty, { title: 'text', tags: array() }, parent, 'e', { title: '', tags: [] })
+    expect(parent.get('e')).toBeInstanceOf(Y.Map)
+  })
+
+  it('creates a declared xml field', () => {
+    const parent = parentMap()
+    const Doc = z.object({ body: z.instanceof(Y.XmlFragment).optional() })
+    create(Doc, { body: 'xml' }, parent, 'd', {})
+    expect((parent.get('d') as Y.Map<unknown>).get('body')).toBeInstanceOf(Y.XmlFragment)
+  })
+
+  it('replaces whatever was stored under the key', () => {
+    const parent = parentMap()
+    parent.set('c1', 'legacy')
+    const value = { title: 'hi', done: false, meta: { n: 1 } }
+    create(Card, {}, parent, 'c1', value)
+    expect((parent.get('c1') as Y.Map<unknown>).toJSON()).toEqual(value)
+  })
+
+  it('creates nothing for an invalid value and returns the issues', () => {
+    const parent = parentMap()
+    const before = Y.encodeStateAsUpdate(parent.doc!)
+    const result = create(Card, {}, parent, 'c1', { title: 5 } as never)
+    expect(result.issues?.length).toBeGreaterThan(0)
+    expect(Y.encodeStateAsUpdate(parent.doc!)).toEqual(before)
+  })
+
+  it('throws before creating anything for a value a Y.Map can’t store', () => {
+    const parent = parentMap()
+    const before = Y.encodeStateAsUpdate(parent.doc!)
+    const Loose = z.object({ when: z.any() })
+    expect(() => create(Loose, {}, parent, 'c1', { when: new Date() })).toThrow(
+      UnsupportedValueError,
+    )
+    expect(parent.has('c1')).toBe(false)
+    expect(Y.encodeStateAsUpdate(parent.doc!)).toEqual(before)
+  })
+
+  it('needs a Y.Map in a doc as the parent', () => {
+    const value = { title: 'hi', done: false, meta: { n: 1 } }
+    expect(() => create(Card, {}, new Y.Map(), 'c1', value)).toThrow(TypeError)
+    expect(() => create(Card, {}, new Y.Doc().getText('t') as never, 'c1', value)).toThrow(
+      TypeError,
+    )
   })
 })

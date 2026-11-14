@@ -12,6 +12,7 @@ export {
 } from './select.js'
 export {
   AsyncValidationUnsupportedError,
+  create,
   read,
   reader,
   UnsupportedValueError,

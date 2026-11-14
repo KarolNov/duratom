@@ -9,5 +9,5 @@ export {
   type RecordKind,
   type Shape,
 } from './shape.js'
-export { write } from './write.js'
+export { create, write } from './write.js'
 export { AsyncValidationUnsupportedError, UnsupportedValueError } from './errors.js'
