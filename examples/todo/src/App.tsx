@@ -5,6 +5,7 @@ import { memo, useMemo, useState, type FormEvent } from 'react'
 import * as Y from 'yjs'
 import { link } from './link'
 import { scanOnAtom, setScan } from './scan'
+import { Tip } from './Tip'
 import {
   addInvalidTodo,
   doneOf,
@@ -200,17 +201,22 @@ function Controls() {
         />
         <output>{latency.toFixed(1)} s</output>
       </label>
-      <label className="scan" title="Outline each component as it re-renders">
-        <input
-          type="checkbox"
-          checked={scan}
-          onChange={(e) => {
-            setScanOn(e.target.checked)
-            void setScan(e.target.checked)
-          }}
-        />
-        Show re-renders
-      </label>
+      <Tip text="Outline each component as it re-renders, and explain below the panes which atom each one reads.">
+        {(describedBy) => (
+          <label className="scan">
+            <input
+              type="checkbox"
+              checked={scan}
+              onChange={(e) => {
+                setScanOn(e.target.checked)
+                void setScan(e.target.checked)
+              }}
+              aria-describedby={describedBy}
+            />
+            Show re-renders
+          </label>
+        )}
+      </Tip>
     </>
   )
 }
@@ -275,19 +281,31 @@ function AddTodo() {
         aria-label="New todo"
       />
       <button type="submit">Add</button>
-      <button
-        type="button"
-        className="icon"
-        onClick={() => {
-          addInvalid(title.trim())
-          setTitle('')
-          setError(undefined)
-        }}
-        title="Add an invalid todo, as a buggy peer would: it skips the schema and stores done as 'yes'"
-        aria-label="Add an invalid todo"
+      <Tip
+        align="end"
+        text={
+          <>
+            <strong>Add an invalid todo</strong>, as a buggy peer would: it skips the schema and
+            stores <code>done: 'yes'</code>. Both panes show it as unreadable; 🔧 repairs it.
+          </>
+        }
       >
-        🐛
-      </button>
+        {(describedBy) => (
+          <button
+            type="button"
+            className="icon"
+            onClick={() => {
+              addInvalid(title.trim())
+              setTitle('')
+              setError(undefined)
+            }}
+            aria-label="Add an invalid todo"
+            aria-describedby={describedBy}
+          >
+            🐛
+          </button>
+        )}
+      </Tip>
       {error && <p className="error">{error}</p>}
     </form>
   )
@@ -307,15 +325,27 @@ const TodoRow = memo(function TodoRow({ id }: { id: string }) {
   if (status !== null) {
     return (
       <li className="broken">
-        <span>Unreadable todo: {status}</span>
-        <button
-          className="icon"
-          onClick={() => repair(id)}
-          title="Repair: replace what the schema rejects with a valid todo, keeping its title"
-          aria-label="Repair"
+        <span className="issue">Unreadable todo: {status}</span>
+        <Tip
+          align="end"
+          text={
+            <>
+              <strong>Repair</strong>: replace what the schema rejects with a valid todo, keeping
+              its title, through the todo's typed atom.
+            </>
+          }
         >
-          🔧
-        </button>
+          {(describedBy) => (
+            <button
+              className="icon"
+              onClick={() => repair(id)}
+              aria-label="Repair"
+              aria-describedby={describedBy}
+            >
+              🔧
+            </button>
+          )}
+        </Tip>
         <button onClick={() => remove(id)} aria-label="Delete">
           ×
         </button>
@@ -364,14 +394,24 @@ function TodoTitle({ id }: { id: string }) {
   }
 
   return (
-    <input
-      className={draft ? 'title invalid' : 'title'}
-      value={draft?.title ?? title}
-      onChange={(e) => rename(e.target.value)}
-      onBlur={() => setDraft(undefined)}
-      title={draft?.error}
-      aria-label="Title"
-      aria-invalid={draft ? true : undefined}
-    />
+    <Tip
+      grow
+      open={draft !== undefined}
+      tone="danger"
+      align="center"
+      text={`${draft?.error ?? ''}. The doc keeps the last valid title.`}
+    >
+      {(describedBy) => (
+        <input
+          className={draft ? 'title invalid' : 'title'}
+          value={draft?.title ?? title}
+          onChange={(e) => rename(e.target.value)}
+          onBlur={() => setDraft(undefined)}
+          aria-label="Title"
+          aria-invalid={draft ? true : undefined}
+          aria-describedby={draft ? describedBy : undefined}
+        />
+      )}
+    </Tip>
   )
 }
