@@ -44,7 +44,8 @@ export function readValue<Schema extends StandardSchemaV1>(
   const onShared = (_found: unknown, at: NonNullable<Path>) =>
     issues.push({
       message: 'Shape mismatch: expected a plain value, found a shared type',
-      path: pathOf(at),
+      // Relative to the value, like the schema's own issues: drop the key itself.
+      path: pathOf(at).slice(1),
     })
   const at = { key, parent: undefined }
   // `copy` reports shared types inside a value, not the value itself.

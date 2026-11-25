@@ -87,6 +87,7 @@ export function keyValueAtom<const S extends Schemas>(
         }
         const issues: StandardSchemaV1.Issue[] = []
         const valid: [string, unknown][] = []
+        const output: Record<string, unknown> = {}
         for (const [key, value] of Object.entries(patch)) {
           const schema = Object.hasOwn(schemas, key) ? schemas[key] : undefined
           if (!schema) {
@@ -97,12 +98,16 @@ export function keyValueAtom<const S extends Schemas>(
           if (checked.issues)
             for (const issue of checked.issues)
               issues.push({ ...issue, path: [key, ...(issue.path ?? [])] })
-          else valid.push([key, value])
+          else {
+            valid.push([key, value])
+            output[key] = checked.value
+          }
         }
         if (issues.length > 0) return void (result = { issues })
         for (const [key, value] of valid) assertStorable(value, { key, parent: undefined })
         for (const [key, value] of valid) setEntry(array, key, copy(value), deepEqual)
-        result = { value: patch }
+        // The schemas' outputs, as `typedAtom` over one key returns.
+        result = { value: output as Patch }
       })
       if (!result.issues) set(version, (n) => n + 1)
       return result
