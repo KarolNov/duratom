@@ -1,6 +1,6 @@
 {
   "name": "duratom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Durable, live Jotai atoms over a Y.Doc: typed reads, validated writes, re-renders only on change.",
   "keywords": [
     "atoms",
