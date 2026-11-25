@@ -1,8 +1,8 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import { atom, type Atom, type WritableAtom } from 'jotai'
-import type * as Y from 'yjs'
-import { Locator, MapPath } from '../core/index.js'
-import { create, isMap, read, reader, write } from '../schema/index.js'
+import * as Y from 'yjs'
+import { KeyPath, Locator, MapPath } from '../core/index.js'
+import { create, isMap, keyReader, read, reader, write, writeKey } from '../schema/index.js'
 import type { Exact } from '../schema/shape.js'
 import { readDoc, versionedLiveAtom, type AtomOptions } from './live-atom.js'
 
@@ -20,6 +20,24 @@ export type Patch<T> = Partial<T> | ((prev: T | undefined) => Partial<T>)
 export type TypedAtom<T> = WritableAtom<
   StandardSchemaV1.Result<T> | undefined,
   [patch: Patch<T>],
+  StandardSchemaV1.Result<T>
+>
+
+/**
+ * What a key atom's setter takes: the whole new value, or a function of the key's value as it is
+ * in the doc at write time (`undefined` while it has no valid value) returning one.
+ */
+export type KeyUpdate<T> = T | ((prev: T | undefined) => T)
+
+/**
+ * A Jotai atom over one key of a key-value array (y-utility's `YKeyValue`), read through a schema.
+ * It reads as `undefined` while the key has no entry, `{ issues }` while its current value doesn't
+ * satisfy the schema, and `{ value }` otherwise. Setting it validates and writes the whole value,
+ * and returns the schema's result.
+ */
+export type TypedKeyAtom<T> = WritableAtom<
+  StandardSchemaV1.Result<T> | undefined,
+  [update: KeyUpdate<T>],
   StandardSchemaV1.Result<T>
 >
 
@@ -56,9 +74,78 @@ export function typedAtom<Schema extends StandardSchemaV1, const S extends objec
   locator: Locator<any> | MapPath<any>,
   schema: Schema,
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
+  options?: AtomOptions,
+): TypedAtom<StandardSchemaV1.InferOutput<Schema>>
+/**
+ * A typed, writable atom over one key of a key-value array (y-utility's `YKeyValue`), read
+ * through `schema`: `select.keyValue(name).key(k)`. It reads the key's current entry (the
+ * rightmost) as `undefined`, `{ issues }` or `{ value }`, and re-renders only when an entry for
+ * that key changes its result, not when other keys change or a stale entry is cleaned up. A
+ * current value the schema rejects reads as `{ issues }`; it does not fall back to an older entry.
+ *
+ * Setting it validates the whole value, then writes it as `YKeyValue#set` does: pushes
+ * `{ key, val }` and deletes the key's older entries, so a `YKeyValue` on the same doc reads it.
+ * A function gets the key's valid value at write time, or `undefined`. `{ issues }` changes
+ * nothing, and so does a missing array. Values are plain: a `YKeyValue` holds no shared types.
+ *
+ * @example
+ * const toneAtom = typedAtom(select.keyValue('master').key('tone'), z.number().min(-1).max(1))
+ *
+ * store.get(toneAtom) // undefined, { issues } or { value }
+ * store.set(toneAtom, -0.6)
+ * store.set(toneAtom, (prev) => Math.min(1, (prev ?? 0) + 0.1))
+ */
+export function typedAtom<Schema extends StandardSchemaV1>(
+  key: KeyPath,
+  schema: Schema,
+  options?: AtomOptions,
+): TypedKeyAtom<StandardSchemaV1.InferOutput<Schema>>
+export function typedAtom(
+  locator: Locator<any> | MapPath<any> | KeyPath,
+  schema: StandardSchemaV1,
+  shapeOrOptions?: object,
   options: AtomOptions = {},
-): TypedAtom<StandardSchemaV1.InferOutput<Schema>> {
-  return refreshedTypedAtom(locator, schema, shape, options, [])
+): TypedAtom<unknown> | TypedKeyAtom<unknown> {
+  if (locator instanceof KeyPath)
+    return typedKeyAtom(locator, schema, (shapeOrOptions as AtomOptions | undefined) ?? {})
+  return refreshedTypedAtom(locator, schema, (shapeOrOptions ?? {}) as never, options, [])
+}
+
+const missingArray = 'The key-value Y.Array is missing'
+
+function typedKeyAtom<Schema extends StandardSchemaV1>(
+  path: KeyPath,
+  schema: Schema,
+  options: AtomOptions,
+): TypedKeyAtom<StandardSchemaV1.InferOutput<Schema>> {
+  type T = StandardSchemaV1.InferOutput<Schema>
+  const { locator, key } = path
+  const { live, version } = versionedLiveAtom(
+    { locate: () => locator, ...keyReader(schema, key) },
+    options,
+  )
+  return atom(
+    (get) => get(live),
+    (get, set, update: KeyUpdate<T>) => {
+      const doc = readDoc(get, options)
+      let result!: StandardSchemaV1.Result<T>
+      doc.transact(() => {
+        const array = locator.resolve(doc)
+        if (!(array instanceof Y.Array))
+          return void (result = { issues: [{ message: missingArray }] })
+        let value = update
+        if (typeof update === 'function') {
+          const current = keyReader(schema, key).project(array)
+          value = (update as (prev: T | undefined) => T)(
+            current && !current.issues ? current.value : undefined,
+          )
+        }
+        result = writeKey(schema, array, key, value as T)
+      })
+      if (!result.issues) set(version, (n) => n + 1)
+      return result
+    },
+  )
 }
 
 /**

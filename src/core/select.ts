@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { deepEqual, isPlainObject } from './equality.js'
+import { currentEntries, currentEntry, touchesKeys } from './key-value.js'
 import { at, isMap, type Locator } from './locator.js'
 import type { LiveSpec } from './live.js'
 
@@ -175,10 +176,15 @@ export class MapPath<V = unknown> extends Path<Y.Map<V>> {
   child<W = V extends Y.Map<infer X> ? X : unknown>(key: string): MapPath<W>
   /** Descend into the `Y.Array` stored under `key`. */
   child<W = V extends Y.Array<infer X> ? X : unknown>(key: string, kind: 'array'): ArrayPath<W>
-  child(key: string, kind: 'map' | 'array' = 'map'): MapPath<unknown> | ArrayPath<unknown> {
-    return kind === 'array'
-      ? new ArrayPath(this.locator.child(key))
-      : new MapPath(this.locator.child(key))
+  /** Descend into the `Y.Array` under `key` that holds a y-utility `YKeyValue`. */
+  child<W = unknown>(key: string, kind: 'keyValue'): KeyValuePath<W>
+  child(
+    key: string,
+    kind: 'map' | 'array' | 'keyValue' = 'map',
+  ): MapPath<unknown> | ArrayPath<unknown> | KeyValuePath<unknown> {
+    if (kind === 'array') return new ArrayPath(this.locator.child(key))
+    if (kind === 'keyValue') return new KeyValuePath(this.locator.child(key))
+    return new MapPath(this.locator.child(key))
   }
 
   /** The value under `key`, or `undefined` when it or the map is missing. Observes only `key`. */
@@ -276,6 +282,88 @@ export class ArrayPath<V = unknown> extends Path<Y.Array<V>> {
 }
 
 /**
+ * A path to a `Y.Array` that holds y-utility's `YKeyValue`: `{ key, val }` entries where the
+ * rightmost entry per key is the current one. duratom reads and writes the same entries as
+ * `YKeyValue`, so the two can share a doc. Items that aren't entries are skipped. End it with a
+ * projection, or pass `key(k)` to `typedAtom` for a validated, writable atom over one key.
+ *
+ * @example
+ * const master = select.keyValue('master')
+ * const tone = liveAtom(master.get('tone', 0))
+ * const toneAtom = typedAtom(master.key('tone'), z.number().min(-1).max(1))
+ */
+export class KeyValuePath<V = unknown> extends Path<Y.Array<unknown>> {
+  protected is(node: unknown): node is Y.Array<unknown> {
+    return node instanceof Y.Array
+  }
+
+  /** The entry for `key`, for `typedAtom(path.key(k), schema)`. */
+  key(key: string): KeyPath {
+    return new KeyPath(this.locator, key)
+  }
+
+  /**
+   * The current value of `key` as stored, `undefined` when it has no entry or the array is
+   * missing. Notifies only when an entry for `key` is added or deleted and the value changed.
+   */
+  get(key: string): Selector<V | undefined>
+  /**
+   * The current value of `key` when it has `fallback`'s kind, else `fallback`, as `MapPath#get`
+   * checks it. Notifies only when an entry for `key` changes the value.
+   */
+  get<D>(key: string, fallback: D): Selector<undefined extends D ? V | Checked<D> : Checked<D>>
+  get(key: string, fallback?: unknown): Selector<any> {
+    const safe = frozen(fallback)
+    return this.selector((node) => orFallback(node && currentEntry(node, key)?.val, safe), {
+      event: touchesKeys([key]),
+      equals: deepEqual,
+    })
+  }
+
+  /** The keys that have an entry, sorted so every peer sees the same order. `[]` when missing. */
+  keys(): Selector<string[]> {
+    return this.selector((node) => (node ? [...currentEntries(node).keys()].sort() : []), {
+      equals: deepEqual,
+    })
+  }
+
+  /** The current value of every key, as stored. `{}` when missing. Compared deeply. */
+  toJSON(): Selector<Record<string, V>> {
+    return this.selector(
+      (node) => {
+        const out: Record<string, V> = {}
+        if (node)
+          for (const [key, entry] of currentEntries(node))
+            Object.defineProperty(out, key, {
+              value: entry.val,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            })
+        return out
+      },
+      { equals: deepEqual },
+    )
+  }
+}
+
+/**
+ * One key of a key-value array (see `KeyValuePath`): `select.keyValue(name).key(k)`. `typedAtom`
+ * takes one for a validated atom over that key's current value.
+ *
+ * @example
+ * const tone = select.keyValue('master').key('tone')
+ * const toneAtom = typedAtom(tone, z.number())
+ */
+export class KeyPath {
+  constructor(
+    /** Where the key-value array is. */
+    readonly locator: Locator<Y.Array<unknown>>,
+    readonly key: string,
+  ) {}
+}
+
+/**
  * Builds selectors: `select.map('cards').child(id).get('title', '')`. Starts
  * at a root type of the doc, like `at`.
  *
@@ -283,8 +371,11 @@ export class ArrayPath<V = unknown> extends Path<Y.Array<V>> {
  * const title = liveAtom(select.map('cards').child('card-1').get('title', ''))
  * const ids = liveAtom(select.map('cards').keys())
  * const order = liveAtom(select.array<string>('order').toArray())
+ * const tone = liveAtom(select.keyValue('master').get('tone', 0))
  */
 export const select = {
   map: <V = unknown>(name: string) => new MapPath<V>(at.map<V>(name)),
   array: <V = unknown>(name: string) => new ArrayPath<V>(at.array<V>(name)),
+  /** A root `Y.Array` that holds a y-utility `YKeyValue`. */
+  keyValue: <V = unknown>(name: string) => new KeyValuePath<V>(at.array<unknown>(name)),
 }

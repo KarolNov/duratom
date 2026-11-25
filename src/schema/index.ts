@@ -11,3 +11,4 @@ export {
 } from './shape.js'
 export { create, write } from './write.js'
 export { AsyncValidationUnsupportedError, UnsupportedValueError } from './errors.js'
+export { keyReader, readKey, writeKey, type KeyReader } from './key-value.js'

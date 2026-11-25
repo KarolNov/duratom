@@ -4,6 +4,8 @@ export { at, Locator, type At } from './locator.js'
 export { observeLocated, type ObserveOptions } from './observe.js'
 export {
   ArrayPath,
+  KeyPath,
+  KeyValuePath,
   MapPath,
   select,
   type Projection,
@@ -13,9 +15,13 @@ export {
 export {
   AsyncValidationUnsupportedError,
   create,
+  keyReader,
   read,
   reader,
+  readKey,
   UnsupportedValueError,
   write,
+  writeKey,
+  type KeyReader,
   type Reader,
 } from '../schema/index.js'
