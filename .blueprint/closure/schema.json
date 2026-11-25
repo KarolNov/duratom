@@ -1,0 +1,23 @@
+{
+  "mode": "symbol",
+  "files": {
+    "src/core/key-value.ts": {"distance": 1, "via": [], "hash": "4c5aae1e1010", "whole": false}
+  },
+  "symbols": [
+    {"file": "src/core/key-value.ts", "symbol": "Entry", "distance": 1, "via": [], "hash": "54bc6379310d"},
+    {"file": "src/core/key-value.ts", "symbol": "currentEntry", "distance": 1, "via": [], "hash": "e983fb78e4ab"},
+    {"file": "src/core/key-value.ts", "symbol": "isEntry", "distance": 1, "via": [], "hash": "e182e60b83e4"},
+    {"file": "src/core/key-value.ts", "symbol": "setEntry", "distance": 1, "via": [], "hash": "0bab97f03974"},
+    {"file": "src/core/key-value.ts", "symbol": "touchesKeys", "distance": 1, "via": [], "hash": "dd2affc9dc06"}
+  ],
+  "external": [
+    "@standard-schema/spec",
+    "@types/node",
+    "yjs"
+  ],
+  "locked": {
+    "@standard-schema/spec": "1.1.0",
+    "@types/node": "22.20.5",
+    "yjs": "13.6.33"
+  }
+}
