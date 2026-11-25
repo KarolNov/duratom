@@ -21,16 +21,17 @@
         "src/core/**",
         "!**/__tests__/**"
       ],
-      "specVersion": "b07899dc79d2a07d",
+      "specVersion": "283d8e1d0e96f1e4",
       "anchorsFiles": {
         "src/core/equality.ts": "8a43c0aeae04",
-        "src/core/index.ts": "b669372fb326",
+        "src/core/index.ts": "5a17d11ed013",
+        "src/core/key-value.ts": "4c5aae1e1010",
         "src/core/live.ts": "354915c4f075",
         "src/core/locator.ts": "b5df09cbf416",
         "src/core/observe.ts": "43013570dcce",
-        "src/core/select.ts": "d5d035fbb8dd"
+        "src/core/select.ts": "387cb353945d"
       },
-      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
     },
     "schema": {
       "ref": "https://app.notion.com/p/41843cce21f28196b716c0414a2fa0fd",
@@ -38,18 +39,19 @@
         "src/schema/**",
         "!**/__tests__/**"
       ],
-      "specVersion": "b8bdd57705e099b0",
+      "specVersion": "4a8904496e781db8",
       "anchorsFiles": {
         "src/schema/copy.ts": "be6ca4fa3cc6",
         "src/schema/equal.ts": "b01d8610e9f6",
         "src/schema/errors.ts": "857bf524fdd6",
-        "src/schema/index.ts": "06637d2a5469",
+        "src/schema/index.ts": "2cc719def7e8",
+        "src/schema/key-value.ts": "cc24ff1d2ce7",
         "src/schema/read.ts": "26db28256b63",
         "src/schema/shape.ts": "db68dff51b06",
         "src/schema/validate.ts": "9ce461fd446f",
-        "src/schema/write.ts": "eeecd8b89fcf"
+        "src/schema/write.ts": "49846dda4e97"
       },
-      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
     },
     "atoms": {
       "ref": "https://app.notion.com/p/41843cce21f281e8abb3d723e3ccff98",
@@ -59,16 +61,17 @@
         "src/index.ts",
         "!**/__tests__/**"
       ],
-      "specVersion": "5288aa7742cd1ffa",
+      "specVersion": "c7e7f1f6c508215e",
       "anchorsFiles": {
         "src/atoms/collection.ts": "4773d1994601",
-        "src/atoms/index.ts": "05b211410fab",
+        "src/atoms/index.ts": "b55c16d9ffa5",
+        "src/atoms/key-value-atom.ts": "f7a49bed8f39",
         "src/atoms/live-atom.ts": "0e984138d782",
-        "src/atoms/typed-atom.ts": "a95f74cad7d0",
+        "src/atoms/typed-atom.ts": "52c5da0cce92",
         "src/index.ts": "70c2a3076d34",
         "src/react/index.ts": "d40fe59c750d"
       },
-      "syncedCommit": "41e9712ddf1ce54c7917fe07e1d873beb1e74894"
+      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
     },
     "docs": {
       "ref": "https://app.notion.com/p/41843cce21f281ddadd7c87c279f801b",
@@ -84,13 +87,14 @@
       "specVersion": "05787bdf9199657c",
       "anchorsFiles": {
         "README.md": "0448d03a9bfe",
-        "docs/api.md": "1772f0137cd4",
-        "docs/guide.md": "151e3b013d73",
+        "docs/api.md": "2678c5333517",
+        "docs/guide.md": "340472a5462e",
         "docs/recipes/offline.md": "a8a313860c20",
         "docs/recipes/repair.md": "3ca901f01fc3",
         "docs/recipes/sync.md": "3e6336734f5c",
         "docs/snippets/collection.tsx": "a4c3e077769e",
         "docs/snippets/core.ts": "87bcf4f267d5",
+        "docs/snippets/key-value.tsx": "ebff8e875df9",
         "docs/snippets/live-atom.tsx": "2e81d3185c5c",
         "docs/snippets/offline.ts": "a891d0916b3d",
         "docs/snippets/quick-start.tsx": "a55fa36ed5f6",
@@ -101,12 +105,12 @@
         "docs/snippets/sync-client.ts": "d794dfc12267",
         "docs/snippets/typed-hook.tsx": "0cce514900ff",
         "docs/tsconfig.json": "746844c7e1c2",
-        "llms-full.txt": "6853956cdf3e",
+        "llms-full.txt": "67248683a7ab",
         "llms.txt": "c9315365b225",
-        "scripts/docs.ts": "2042f5a85011",
-        "skills/duratom/SKILL.md": "82c06501dfa8"
+        "scripts/docs.ts": "61acada568aa",
+        "skills/duratom/SKILL.md": "47f569716924"
       },
-      "syncedCommit": "793190f321af9ecf928ff5701b2d2a520d556280"
+      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
     }
   },
   "changes": {

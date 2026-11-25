@@ -61,6 +61,35 @@ A collection over a map of items SHALL offer an ids atom that changes only when 
   - **WHEN** `create` is called with an invalid value
   - **THEN** nothing is added and the issues are returned
 
+### Requirement: Typed key atom
+
+A typed atom over one key of a key-value array SHALL read as `undefined` while the key has no entry, `{ issues }` while its current value does not satisfy the schema, and `{ value }` otherwise, and SHALL notify only when that result changes.
+
+- **Scenario: Another key changes**
+  - **GIVEN** a typed atom over `tone`
+  - **WHEN** a peer sets `gain`
+  - **THEN** the atom does not notify
+
+### Requirement: Typed key atom write
+
+Setting a typed key atom with a whole value, or with a function of the key's valid value at write time, SHALL validate it and write it as a key-value entry, and SHALL return the schema result; an invalid value or a missing array SHALL change nothing.
+
+- **Scenario: Concurrent writers**
+  - **GIVEN** one peer writes `tone` through a typed key atom and another through `YKeyValue` at the same time
+  - **WHEN** the peers sync
+  - **THEN** both read the same value
+- **Scenario: Missing array**
+  - **WHEN** a typed key atom is set while its array does not exist
+  - **THEN** nothing is written and the result holds an issue
+
+### Requirement: Key-value atom
+
+An atom over several keys of a key-value array, with one schema per key, SHALL read one result per key it names and ignore keys it does not name; setting it SHALL validate every key of the patch before writing any, and when any key is invalid or unknown, nothing SHALL be written and each issue's path SHALL start at its key.
+
+- **Scenario: One key invalid**
+  - **WHEN** a patch sets `tone` to a valid value and `filter` to an invalid one
+  - **THEN** neither key is written and the issues' paths start at `filter`
+
 ### Requirement: React hook
 
 `useLiveAtom` SHALL return the value of a live atom built from a spec or spec factory, and `useTypedAtom` SHALL return a typed atom's result and its setter, each rebuilding its atom only when its dependency list changes.
