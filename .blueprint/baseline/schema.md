@@ -34,8 +34,29 @@ Writing a value SHALL validate it first; an invalid value SHALL change nothing a
 
 ### Requirement: Unsupported input is an error
 
-Writing a value a `Y.Map` cannot hold, or validating with a schema that validates asynchronously, SHALL throw a named error before anything is written.
+Writing a value the doc cannot hold, or validating with a schema that validates asynchronously, SHALL throw a named error before anything is written.
 
 - **Scenario: Async schema**
   - **WHEN** a schema returns a promise from validation
   - **THEN** an `AsyncValidationUnsupportedError` is thrown and the doc is unchanged
+
+### Requirement: Read a key-value entry
+
+Reading a key of a key-value array SHALL return nothing for a missing array or a key with no entry, the layer's own issue when the current value holds a shared type, and otherwise the validator's own result for the current value; a current value the schema rejects SHALL NOT fall back to an older entry.
+
+- **Scenario: Invalid current value**
+  - **GIVEN** the current entry for `tone` holds a value the schema rejects and an older entry holds a valid one
+  - **WHEN** `tone` is read
+  - **THEN** the read returns the schema's issues and no value
+
+### Requirement: Write a key-value entry
+
+Writing a key of a key-value array SHALL validate the value first; an invalid value SHALL change nothing and return the issues; a valid one SHALL be written as `YKeyValue#set` does, in one transaction: push `{ key, val }` and delete the key's older entries, leaving the array unchanged when its only entry for the key already holds an equal value.
+
+- **Scenario: Shared with YKeyValue**
+  - **GIVEN** a `YKeyValue` over the same array
+  - **WHEN** `tone` is written
+  - **THEN** the `YKeyValue` reads the new value and the array holds one entry for `tone`
+- **Scenario: Equal value**
+  - **WHEN** a value equal to the current one is written
+  - **THEN** the doc is unchanged

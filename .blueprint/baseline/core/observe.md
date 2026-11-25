@@ -43,3 +43,27 @@ A subscription SHALL ignore transactions its origin filter rejects and changes i
   - **GIVEN** an origin filter rejecting origin `local`
   - **WHEN** a transaction with origin `local` changes the node
   - **THEN** no subscriber is notified
+
+### Requirement: Key-value view
+
+A key-value path SHALL read a `Y.Array` of `{ key, val }` entries as y-utility's `YKeyValue` does: the rightmost entry per key is the current one, and items that are not entries are skipped.
+
+- **Scenario: Rightmost entry wins**
+  - **GIVEN** two entries for `tone`
+  - **WHEN** `tone` is read
+  - **THEN** the value of the rightmost entry is returned
+- **Scenario: Keys in a stable order**
+  - **WHEN** the keys of a key-value array are read
+  - **THEN** every peer gets them in the same sorted order
+
+### Requirement: Per-key notification
+
+A projection of one key of a key-value array SHALL count only changes that add or delete an entry for that key.
+
+- **Scenario: Other key written**
+  - **GIVEN** a subscription to the value of `tone`
+  - **WHEN** `gain` is set
+  - **THEN** no subscriber is notified
+- **Scenario: Stale entry cleaned up**
+  - **WHEN** an older entry for `tone` is deleted and the current value is unchanged
+  - **THEN** no subscriber is notified
