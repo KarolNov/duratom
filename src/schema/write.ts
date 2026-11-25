@@ -271,7 +271,7 @@ function diff(current: readonly unknown[], next: readonly unknown[]) {
  * throw halfway through the merge.
  * A stack of steps rather than recursion, so nesting as deep as a peer can sync can't overflow.
  */
-function assertStorable(field: unknown, root: NonNullable<Path>) {
+export function assertStorable(field: unknown, root: NonNullable<Path>) {
   // Each step links to its parent's, so the path is built only for the value that fails.
   type At = NonNullable<Path>
   type Step = { value: unknown; at: At } | { leave: object }

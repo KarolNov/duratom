@@ -180,6 +180,56 @@ export function CardRow({ id }: { id: string }) {
 }
 ```
 
+### Key-value stores
+
+State that is written very often in alternating order, such as knobs and XY pads, makes a `Y.Map` grow. y-utility's [`YKeyValue`](https://github.com/yjs/y-utility) keeps it small: `{ key, val }` entries in a `Y.Array`, where the rightmost entry per key is the current one and a write deletes the older ones. `select.keyValue(name)` reads and writes the same entries, so duratom and a `YKeyValue` can share a doc, and duratom needs no y-utility of its own.
+
+`typedAtom(path.key(k), schema)` is one validated key: it re-renders only when that key's current value changes, and setting it takes the whole value, since a key holds a plain value rather than fields. `keyValueAtom(path, schemas)` reads several keys with a schema each. A current value the schema rejects reads as `{ issues }`, like an invalid map field, and writing a valid value repairs it.
+
+```tsx
+import { keyValueAtom, select, typedAtom } from 'duratom'
+import { useAtom, useAtomValue } from 'jotai'
+import { z } from 'zod'
+
+// The root array `master` holds a y-utility YKeyValue: { key, val } entries, the rightmost wins.
+const master = select.keyValue('master')
+
+// One key: re-renders only when `tone` changes, not when another knob moves.
+const toneAtom = typedAtom(master.key('tone'), z.number().min(-1).max(1))
+
+export function ToneKnob() {
+  const [tone, setTone] = useAtom(toneAtom)
+  const value = tone && !tone.issues ? tone.value : 0
+  return (
+    <input
+      type="range"
+      min={-1}
+      max={1}
+      step={0.01}
+      value={value}
+      // Validated, then written as YKeyValue#set writes it: append, delete the older entry.
+      onChange={(e) => setTone(Number(e.target.value))}
+    />
+  )
+}
+
+// Several keys at once, a schema per key; keys it doesn't name are ignored.
+const XY = z.object({ x: z.number(), y: z.number() })
+const masterAtom = keyValueAtom(master, { tone: z.number(), filter: XY })
+
+export function MasterSummary() {
+  const { tone, filter } = useAtomValue(masterAtom)
+  return (
+    <p>
+      tone {tone && !tone.issues ? tone.value : '–'}, filter{' '}
+      {filter && !filter.issues ? `${filter.value.x}, ${filter.value.y}` : '–'}
+    </p>
+  )
+}
+```
+
+`.get(key, fallback)`, `.keys()` and `.toJSON()` read a key-value store without a schema, and `readKey`, `writeKey` and `keyReader` from `duratom/core` work without Jotai. Values are plain only: a `YKeyValue` holds no shared types.
+
 ### Custom projections
 
 `liveAtom` is the read-only atom under `typedAtom`, for values a schema doesn't describe: one field, a count, anything computed from a node. `select` builds what it reads, and the atom re-renders only when the result changes.
@@ -583,6 +633,79 @@ deepEqual({ tags: ['a'] }, { tags: ['a'] }) // true
 const tags = liveAtom({ ...select.map('card').get('tags', []), equals: deepEqual })
 ```
 
+##### `KeyPath`
+
+```ts
+class KeyPath
+```
+
+One key of a key-value array (see `KeyValuePath`): `select.keyValue(name).key(k)`. `typedAtom`
+takes one for a validated atom over that key's current value.
+
+```ts
+const tone = select.keyValue('master').key('tone')
+const toneAtom = typedAtom(tone, z.number())
+```
+
+- `constructor(/** Where the key-value array is. */ readonly locator: Locator<Y.Array<unknown>>, readonly key: string)`
+- `readonly locator: Locator<Y.Array<unknown>>`
+
+  Where the key-value array is.
+
+- `readonly key: string`
+
+##### `KeyValuePath`
+
+```ts
+class KeyValuePath<V = unknown>
+```
+
+A path to a `Y.Array` that holds y-utility's `YKeyValue`: `{ key, val }` entries where the
+rightmost entry per key is the current one. duratom reads and writes the same entries as
+`YKeyValue`, so the two can share a doc. Items that aren't entries are skipped. End it with a
+projection, or pass `key(k)` to `typedAtom` for a validated, writable atom over one key.
+
+```ts
+const master = select.keyValue('master')
+const tone = liveAtom(master.get('tone', 0))
+const toneAtom = typedAtom(master.key('tone'), z.number().min(-1).max(1))
+```
+
+- `key(key: string): KeyPath`
+
+  The entry for `key`, for `typedAtom(path.key(k), schema)`.
+
+- `get(key: string): Selector<V | undefined>`
+
+  The current value of `key` as stored, `undefined` when it has no entry or the array is
+  missing. Notifies only when an entry for `key` is added or deleted and the value changed.
+
+- `get<D>(key: string, fallback: D): Selector<undefined extends D ? V | Checked<D> : Checked<D>>`
+
+  The current value of `key` when it has `fallback`'s kind, else `fallback`, as `MapPath#get`
+  checks it. Notifies only when an entry for `key` changes the value.
+
+- `keys(): Selector<string[]>`
+
+  The keys that have an entry, sorted so every peer sees the same order. `[]` when missing.
+
+- `toJSON(): Selector<Record<string, V>>`
+
+  The current value of every key, as stored. `{}` when missing. Compared deeply.
+
+- `readonly locator: Locator<Y.Array<unknown>>`
+- `project<T>(project: (node: Y.Array<unknown> | undefined) => T, options?: ProjectOptions<T>): Selector<T>`
+
+  Your own projection of the node, `undefined` when it is missing or of
+  another kind. Observes deeply and compares with `deepEqual` unless
+  `options` say otherwise; `keys` alone observes only those keys.
+
+- `project<T>(projection: Projection<T>): Selector<T>`
+
+  A packaged projection, such as `reader(schema, shape)`, with its own
+  observe options and `equals`. It gets the node as stored, whatever its kind.
+
+
 ##### `Locator`
 
 ```ts
@@ -630,6 +753,10 @@ const flags = liveAtom(card.pick({ done: false, starred: false }))
 - `child<W = V extends Y.Array<infer X> ? X : unknown>(key: string, kind: 'array'): ArrayPath<W>`
 
   Descend into the `Y.Array` stored under `key`.
+
+- `child<W = unknown>(key: string, kind: 'keyValue'): KeyValuePath<W>`
+
+  Descend into the `Y.Array` under `key` that holds a y-utility `YKeyValue`.
 
 - `get(key: string): Selector<V | undefined>`
 
@@ -685,6 +812,7 @@ const flags = liveAtom(card.pick({ done: false, starred: false }))
 const select: {
   map: <V = unknown>(name: string) => MapPath<V>;
   array: <V = unknown>(name: string) => ArrayPath<V>;
+  keyValue: <V = unknown>(name: string) => KeyValuePath<V>;
 }
 ```
 
@@ -695,6 +823,7 @@ at a root type of the doc, like `at`.
 const title = liveAtom(select.map('cards').child('card-1').get('title', ''))
 const ids = liveAtom(select.map('cards').keys())
 const order = liveAtom(select.array<string>('order').toArray())
+const tone = liveAtom(select.keyValue('master').get('tone', 0))
 ```
 
 ##### `shallowEqual`
@@ -790,8 +919,13 @@ function typedAtom<Schema extends StandardSchemaV1, const S extends object>(
   locator: Locator<any> | MapPath<any>,
   schema: Schema,
   shape: Exact<S, StandardSchemaV1.InferOutput<Schema>>,
-  options: AtomOptions = {},
+  options?: AtomOptions,
 ): TypedAtom<StandardSchemaV1.InferOutput<Schema>>
+function typedAtom<Schema extends StandardSchemaV1>(
+  key: KeyPath,
+  schema: Schema,
+  options?: AtomOptions,
+): TypedKeyAtom<StandardSchemaV1.InferOutput<Schema>>
 ```
 
 A typed, writable atom over the `Y.Map` at `locator`, read through `schema` and `shape`: a
@@ -814,6 +948,17 @@ an invalid node a valid value replaces what the schema rejected, keeping keys ne
 nor the value names: that is how a node a peer broke is repaired. A shared type of another kind
 where the map belongs reads as issues, and only writing its parent can replace it.
 
+A typed, writable atom over one key of a key-value array (y-utility's `YKeyValue`), read
+through `schema`: `select.keyValue(name).key(k)`. It reads the key's current entry (the
+rightmost) as `undefined`, `{ issues }` or `{ value }`, and re-renders only when an entry for
+that key changes its result, not when other keys change or a stale entry is cleaned up. A
+current value the schema rejects reads as `{ issues }`; it does not fall back to an older entry.
+
+Setting it validates the whole value, then writes it as `YKeyValue#set` does: pushes
+`{ key, val }` and deletes the key's older entries, so a `YKeyValue` on the same doc reads it.
+A function gets the key's valid value at write time, or `undefined`. `{ issues }` changes
+nothing, and so does a missing array. Values are plain: a `YKeyValue` holds no shared types.
+
 ```ts
 const Card = z.object({ title: z.string(), priority: z.enum(['low', 'high']) })
 const cardAtom = typedAtom(select.map('cards').child('card-1'), Card, { title: 'text' })
@@ -821,6 +966,43 @@ const cardAtom = typedAtom(select.map('cards').child('card-1'), Card, { title: '
 store.get(cardAtom) // undefined, { issues } or { value }
 store.set(cardAtom, { title: 'Ship it', priority: 'low' }) // creates the card
 store.set(cardAtom, { priority: 'high' }) // changes only priority
+```
+
+```ts
+const toneAtom = typedAtom(select.keyValue('master').key('tone'), z.number().min(-1).max(1))
+
+store.get(toneAtom) // undefined, { issues } or { value }
+store.set(toneAtom, -0.6)
+store.set(toneAtom, (prev) => Math.min(1, (prev ?? 0) + 0.1))
+```
+
+##### `keyValueAtom`
+
+```ts
+function keyValueAtom<const S extends Schemas>(
+  path: KeyValuePath<any>,
+  schemas: S,
+  options: AtomOptions = {},
+): KeyValueAtom<S>
+```
+
+A typed, writable atom over a whole key-value array (y-utility's `YKeyValue`), with one schema
+per key. Keys `schemas` doesn't name are left out of the read and never written. It re-renders
+only when an entry for one of its keys changes a result; for one key alone, use
+`typedAtom(path.key(k), schema)`, which also ignores the other keys.
+
+Setting it validates every key of the patch first: when any is invalid, nothing is written and
+the result holds their issues, each path starting at its key. Otherwise each key is written as
+`YKeyValue#set` does, in one transaction. A missing array changes nothing.
+
+```ts
+const master = keyValueAtom(select.keyValue('master'), {
+  tone: z.number().min(-1).max(1),
+  filter: z.object({ x: z.number(), y: z.number() }),
+})
+
+store.get(master).tone // undefined, { issues } or { value }
+store.set(master, { tone: -0.6 })
 ```
 
 #### Types
@@ -1019,6 +1201,15 @@ type CreateResult<T> =
 
 What a collection's `create` returns: the schema's result, with the new item's id when valid.
 
+##### `KeyUpdate`
+
+```ts
+type KeyUpdate<T> = T | ((prev: T | undefined) => T)
+```
+
+What a key atom's setter takes: the whole new value, or a function of the key's value as it is
+in the doc at write time (`undefined` while it has no valid value) returning one.
+
 ##### `Patch`
 
 ```ts
@@ -1041,6 +1232,36 @@ type TypedAtom<T> = WritableAtom<
 A Jotai atom over one `Y.Map` of the doc, read through a schema. It reads as `undefined` while
 the node is missing, `{ issues }` while it doesn't satisfy the schema, and `{ value }`
 otherwise. Setting it merges a patch and returns the schema's result.
+
+##### `TypedKeyAtom`
+
+```ts
+type TypedKeyAtom<T> = WritableAtom<
+  StandardSchemaV1.Result<T> | undefined,
+  [update: KeyUpdate<T>],
+  StandardSchemaV1.Result<T>
+>
+```
+
+A Jotai atom over one key of a key-value array (y-utility's `YKeyValue`), read through a schema.
+It reads as `undefined` while the key has no entry, `{ issues }` while its current value doesn't
+satisfy the schema, and `{ value }` otherwise. Setting it validates and writes the whole value,
+and returns the schema's result.
+
+##### `KeyValueAtom`
+
+```ts
+type KeyValueAtom<S extends Schemas> = WritableAtom<
+  { [K in keyof S]: StandardSchemaV1.Result<Values<S>[K]> | undefined },
+  [patch: Partial<Values<S>> | ((prev: Partial<Values<S>>) => Partial<Values<S>>)],
+  StandardSchemaV1.Result<Partial<Values<S>>>
+>
+```
+
+A Jotai atom over the keys of a key-value array that `schemas` names, each read through its
+own schema. It reads as an object with one result per key: `undefined` while the key has no
+entry, `{ issues }` while its value is invalid, `{ value }` otherwise. Setting it takes a patch
+of the keys to change, or a function of their valid values returning one.
 
 ### `duratom/react`
 
@@ -1117,7 +1338,7 @@ if (card && !card.issues) setCard({ priority: 'high' })
 
 ### `duratom/core`
 
-Also exports `deepEqual`, `shallowEqual`, `LiveSpec`, `at`, `Locator`, `At`, `ObserveOptions`, `ArrayPath`, `MapPath`, `select`, `Projection`, `ProjectOptions`, `Selector`, documented under `duratom`.
+Also exports `deepEqual`, `shallowEqual`, `LiveSpec`, `at`, `Locator`, `At`, `ObserveOptions`, `ArrayPath`, `KeyPath`, `KeyValuePath`, `MapPath`, `select`, `Projection`, `ProjectOptions`, `Selector`, documented under `duratom`.
 
 #### Functions and values
 
@@ -1215,6 +1436,24 @@ const Todo = z.object({ title: z.string(), done: z.boolean() })
 create(Todo, { title: 'text' }, doc.getMap('todos'), 'todo-1', { title: 'Buy milk', done: false })
 ```
 
+##### `keyReader`
+
+```ts
+function keyReader<Schema extends StandardSchemaV1>(
+  schema: Schema,
+  key: string,
+): KeyReader<StandardSchemaV1.InferOutput<Schema>>
+```
+
+`readKey(schema, node, key)` packaged as a projection for `select.keyValue(name).project(...)`:
+it counts only changes that add or delete an entry for `key`, and compares results deeply.
+`typedAtom(path.key(k), schema)` reads through it.
+
+```ts
+const tone = live(doc, select.keyValue('master').project(keyReader(z.number(), 'tone')))
+tone.subscribe((result) => console.log(result?.issues ?? result?.value))
+```
+
 ##### `read`
 
 ```ts
@@ -1253,6 +1492,30 @@ function reader<Schema extends StandardSchemaV1, const S extends object>(
 const Todo = z.object({ title: z.string(), done: z.boolean() })
 const todo = live(doc, select.map('todos').child(id).project(reader(Todo, { title: 'text' })))
 todo.subscribe((result) => console.log(result?.issues ?? result?.value))
+```
+
+##### `readKey`
+
+```ts
+function readKey<Schema extends StandardSchemaV1>(
+  schema: Schema,
+  array: Y.AbstractType<any> | undefined,
+  key: string,
+): Result<Schema> | undefined
+```
+
+Reads the current value of `key` in a key-value array (y-utility's `YKeyValue`: the rightmost
+`{ key, val }` entry per key wins) and validates it with `schema`, returning the schema's own
+result. A missing array or a key with no entry returns `undefined` without validating. A value
+holding a shared type returns the layer's own issue without validating, since a `YKeyValue`
+holds plain values only.
+
+A current value the schema rejects reads as `{ issues }`, like an invalid map field: it does not
+fall back to an older entry, which a `YKeyValue` deletes anyway. Writing a valid value repairs it.
+
+```ts
+const result = readKey(z.number(), doc.getArray('master'), 'tone')
+if (result && !result.issues) console.log(result.value)
 ```
 
 ##### `UnsupportedValueError`
@@ -1307,6 +1570,28 @@ const result = write(Todo, { title: 'text' }, node, { title: 'Ship it', done: tr
 if (result.issues) console.warn(result.issues) // the doc is unchanged
 ```
 
+##### `writeKey`
+
+```ts
+function writeKey<Schema extends StandardSchemaV1>(
+  schema: Schema,
+  array: Y.Array<any>,
+  key: string,
+  value: StandardSchemaV1.InferOutput<Schema>,
+): Result<Schema>
+```
+
+Validates `value` with `schema` and, if it's valid, sets `key` of the key-value array as
+`YKeyValue#set` does: pushes `{ key, val }` to its end and deletes every older entry for `key`,
+in one transaction. Returns the schema's own result; an invalid value changes nothing, and so
+does a value equal to the current one. Throws `UnsupportedValueError` for a value Yjs can't store
+as written, since the schema accepted it.
+
+```ts
+const result = writeKey(z.number().min(-1).max(1), doc.getArray('master'), 'tone', -0.6)
+if (result.issues) console.warn(result.issues) // the doc is unchanged
+```
+
 #### Types
 
 ##### `Live`
@@ -1334,6 +1619,22 @@ interface Live<T, N extends Y.AbstractType<any> = Y.AbstractType<any>> {
 ```
 
 A read-only value over one node of a doc, in the shape `useSyncExternalStore` takes.
+
+##### `KeyReader`
+
+```ts
+interface KeyReader<T> {
+  project: (node: Y.AbstractType<any> | undefined) => StandardSchemaV1.Result<T> | undefined
+  deep: false
+  event: (event: Y.YEvent<any>) => boolean
+  equals: (
+    a: StandardSchemaV1.Result<T> | undefined,
+    b: StandardSchemaV1.Result<T> | undefined,
+  ) => boolean
+}
+```
+
+What `keyReader` returns: a projection of one key's validated value, with its event filter.
 
 ##### `Reader`
 

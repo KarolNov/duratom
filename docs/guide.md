@@ -186,6 +186,60 @@ export function CardRow({ id }: { id: string }) {
 
 <!-- /snippet -->
 
+## Key-value stores
+
+State that is written very often in alternating order, such as knobs and XY pads, makes a `Y.Map` grow. y-utility's [`YKeyValue`](https://github.com/yjs/y-utility) keeps it small: `{ key, val }` entries in a `Y.Array`, where the rightmost entry per key is the current one and a write deletes the older ones. `select.keyValue(name)` reads and writes the same entries, so duratom and a `YKeyValue` can share a doc, and duratom needs no y-utility of its own.
+
+`typedAtom(path.key(k), schema)` is one validated key: it re-renders only when that key's current value changes, and setting it takes the whole value, since a key holds a plain value rather than fields. `keyValueAtom(path, schemas)` reads several keys with a schema each. A current value the schema rejects reads as `{ issues }`, like an invalid map field, and writing a valid value repairs it.
+
+<!-- snippet: docs/snippets/key-value.tsx -->
+
+```tsx
+import { keyValueAtom, select, typedAtom } from 'duratom'
+import { useAtom, useAtomValue } from 'jotai'
+import { z } from 'zod'
+
+// The root array `master` holds a y-utility YKeyValue: { key, val } entries, the rightmost wins.
+const master = select.keyValue('master')
+
+// One key: re-renders only when `tone` changes, not when another knob moves.
+const toneAtom = typedAtom(master.key('tone'), z.number().min(-1).max(1))
+
+export function ToneKnob() {
+  const [tone, setTone] = useAtom(toneAtom)
+  const value = tone && !tone.issues ? tone.value : 0
+  return (
+    <input
+      type="range"
+      min={-1}
+      max={1}
+      step={0.01}
+      value={value}
+      // Validated, then written as YKeyValue#set writes it: append, delete the older entry.
+      onChange={(e) => setTone(Number(e.target.value))}
+    />
+  )
+}
+
+// Several keys at once, a schema per key; keys it doesn't name are ignored.
+const XY = z.object({ x: z.number(), y: z.number() })
+const masterAtom = keyValueAtom(master, { tone: z.number(), filter: XY })
+
+export function MasterSummary() {
+  const { tone, filter } = useAtomValue(masterAtom)
+  return (
+    <p>
+      tone {tone && !tone.issues ? tone.value : '–'}, filter{' '}
+      {filter && !filter.issues ? `${filter.value.x}, ${filter.value.y}` : '–'}
+    </p>
+  )
+}
+```
+
+<!-- /snippet -->
+
+`.get(key, fallback)`, `.keys()` and `.toJSON()` read a key-value store without a schema, and `readKey`, `writeKey` and `keyReader` from `duratom/core` work without Jotai. Values are plain only: a `YKeyValue` holds no shared types.
+
 ## Custom projections
 
 `liveAtom` is the read-only atom under `typedAtom`, for values a schema doesn't describe: one field, a count, anything computed from a node. `select` builds what it reads, and the atom re-renders only when the result changes.

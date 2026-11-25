@@ -21,17 +21,18 @@ The whole documentation is in `node_modules/duratom/llms-full.txt`: the guide, t
 
 ## Which API
 
-| Need                                        | Use                                                                                     |
-| ------------------------------------------- | --------------------------------------------------------------------------------------- |
-| One typed object at a known path            | `typedAtom(select.map('root').child('key'), Schema, shape)`                             |
-| A list of items with ids                    | `collection(select.map('items'), Schema, shape)`: `ids`, `item(id)`, `create`, `remove` |
-| One field, a count, a derived value         | `liveAtom(select.map('m').get('field', fallback))` or `.project(fn)`                    |
-| A selector that depends on props, in a hook | `useLiveAtom(() => select..., [deps])` from `duratom/react`                             |
-| A typed object whose path depends on props  | `useTypedAtom(() => select..., Schema, shape, [deps])` from `duratom/react`             |
-| No Jotai                                    | `live`, `read`, `write` from `duratom/core`                                             |
-| Values derived from typed atoms             | a plain Jotai `atom((get) => ...)` over them                                            |
+| Need                                         | Use                                                                                                       |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| One typed object at a known path             | `typedAtom(select.map('root').child('key'), Schema, shape)`                                               |
+| A list of items with ids                     | `collection(select.map('items'), Schema, shape)`: `ids`, `item(id)`, `create`, `remove`                   |
+| Often-written knobs in a y-utility YKeyValue | `typedAtom(select.keyValue('m').key('k'), Schema)` or `keyValueAtom(select.keyValue('m'), { k: Schema })` |
+| One field, a count, a derived value          | `liveAtom(select.map('m').get('field', fallback))` or `.project(fn)`                                      |
+| A selector that depends on props, in a hook  | `useLiveAtom(() => select..., [deps])` from `duratom/react`                                               |
+| A typed object whose path depends on props   | `useTypedAtom(() => select..., Schema, shape, [deps])` from `duratom/react`                               |
+| No Jotai                                     | `live`, `read`, `write` from `duratom/core`                                                               |
+| Values derived from typed atoms              | a plain Jotai `atom((get) => ...)` over them                                                              |
 
-Paths: `select.map(name)` and `select.array(name)` start at a root type; `.child(key)` descends into a nested map, `.child(key, 'array')` into a nested array. Selectors end a path: `.get(key, fallback)`, `.pick(defaults)`, `.text(key)`, `.keys()`, `.toJSON()`, `.project(fn)` on a map; `.toArray()`, `.length()`, `.toJSON()` on an array.
+Paths: `select.map(name)` and `select.array(name)` start at a root type; `.child(key)` descends into a nested map, `.child(key, 'array')` into a nested array. Selectors end a path: `.get(key, fallback)`, `.pick(defaults)`, `.text(key)`, `.keys()`, `.toJSON()`, `.project(fn)` on a map; `.toArray()`, `.length()`, `.toJSON()` on an array. `select.keyValue(name)` (or `.child(key, 'keyValue')`) is a y-utility `YKeyValue` array: `.get(key, fallback)`, `.keys()`, `.toJSON()`, and `.key(k)` for `typedAtom`.
 
 ## Setup
 
