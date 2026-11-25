@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "docs": {
     "backend": "notion",
     "location": {
@@ -14,6 +15,7 @@
     }
   },
   "project": "https://app.notion.com/p/40a43cce21f281a883b8cb76b5aa87fd",
+  "domains": {},
   "specs": {
     "core/observe": {
       "ref": "https://app.notion.com/p/41843cce21f28159aa9ce272ea3fc338",
@@ -31,7 +33,7 @@
         "src/core/observe.ts": "43013570dcce",
         "src/core/select.ts": "387cb353945d"
       },
-      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
+      "syncedCommit": "2d4ed979de63886bc5c9d43057a25a8d0cd17b16"
     },
     "schema": {
       "ref": "https://app.notion.com/p/41843cce21f28196b716c0414a2fa0fd",
@@ -51,7 +53,7 @@
         "src/schema/validate.ts": "9ce461fd446f",
         "src/schema/write.ts": "49846dda4e97"
       },
-      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
+      "syncedCommit": "2d4ed979de63886bc5c9d43057a25a8d0cd17b16"
     },
     "atoms": {
       "ref": "https://app.notion.com/p/41843cce21f281e8abb3d723e3ccff98",
@@ -71,7 +73,7 @@
         "src/index.ts": "70c2a3076d34",
         "src/react/index.ts": "d40fe59c750d"
       },
-      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
+      "syncedCommit": "2d4ed979de63886bc5c9d43057a25a8d0cd17b16"
     },
     "docs": {
       "ref": "https://app.notion.com/p/41843cce21f281ddadd7c87c279f801b",
@@ -110,7 +112,7 @@
         "scripts/docs.ts": "61acada568aa",
         "skills/duratom/SKILL.md": "47f569716924"
       },
-      "syncedCommit": "96b4b006ee012867d81df11c30f58f1eca2585f0"
+      "syncedCommit": "2d4ed979de63886bc5c9d43057a25a8d0cd17b16"
     }
   },
   "changes": {
